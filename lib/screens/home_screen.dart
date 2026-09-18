@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/auth_service.dart';
 import '../widgets/dashboard_card.dart';
 
 /// The main home / dashboard screen for LibraSync.
@@ -8,6 +9,30 @@ import '../widgets/dashboard_card.dart';
 /// that will be wired to real screens in future milestones.
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
+
+  Future<void> _handleLogout(BuildContext context) async {
+    final shouldLogout = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Log Out'),
+        content: const Text('Are you sure you want to log out of LibraSync?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldLogout == true) {
+      await AuthService().signOut();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,6 +54,12 @@ class HomeScreen extends StatelessWidget {
                 ),
               );
             },
+          ),
+          // Logout Action
+          IconButton(
+            icon: const Icon(Icons.logout_rounded),
+            tooltip: 'Log Out',
+            onPressed: () => _handleLogout(context),
           ),
         ],
       ),
@@ -158,6 +189,11 @@ class _WelcomeBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthService().currentUser;
+    final userGreeting = user?.displayName != null && user!.displayName!.trim().isNotEmpty
+        ? 'Hello, ${user.displayName}! Manage your library collection.'
+        : 'Your community library management hub.';
+
     return Card(
       color: colorScheme.primaryContainer,
       child: Padding(
@@ -183,7 +219,7 @@ class _WelcomeBanner extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Your community library management hub.',
+                    userGreeting,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: colorScheme.onPrimaryContainer,
                         ),

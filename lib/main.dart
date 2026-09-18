@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
-import 'screens/home_screen.dart';
+import 'screens/auth/auth_gate.dart';
 import 'theme/app_theme.dart';
 
 Future<void> main() async {
@@ -15,7 +15,9 @@ Future<void> main() async {
 
 /// Root widget for the LibraSync application.
 class LibraSyncApp extends StatelessWidget {
-  const LibraSyncApp({super.key});
+  const LibraSyncApp({super.key, this.home});
+
+  final Widget? home;
 
   @override
   Widget build(BuildContext context) {
@@ -25,7 +27,7 @@ class LibraSyncApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
-      home: const HomeScreen(),
+      home: home ?? const AuthGate(),
     );
   }
 }
