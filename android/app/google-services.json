@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1058223851177",
+    "project_id": "librasync-2b2fc",
+    "storage_bucket": "librasync-2b2fc.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1058223851177:android:0576e3db32ef9401bfcbb8",
+        "android_client_info": {
+          "package_name": "com.example.librasync"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBCtkg0yOzNcRM8Bt-Fs2a8JN7hnSHkn1o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
