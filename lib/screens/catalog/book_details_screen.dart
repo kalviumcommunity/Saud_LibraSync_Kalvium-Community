@@ -1,16 +1,35 @@
 import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
+import '../../services/circulation_service.dart';
+import '../../widgets/circulation/borrow_confirmation_sheet.dart';
 
-/// Screen displaying comprehensive details for a selected [Book].
+/// Screen displaying comprehensive details for a selected [Book] and circulation actions.
 class BookDetailsScreen extends StatelessWidget {
   const BookDetailsScreen({
     super.key,
     required this.book,
+    this.circulationService,
+    this.onConfirmBorrow,
   });
 
   /// The book to display.
   final Book book;
+
+  /// Optional circulation service instance.
+  final CirculationService? circulationService;
+
+  /// Optional custom borrow callback for testing or custom pipelines.
+  final Future<void> Function()? onConfirmBorrow;
+
+  void _openBorrowSheet(BuildContext context) {
+    BorrowConfirmationSheet.show(
+      context,
+      book: book,
+      onConfirmBorrow: onConfirmBorrow,
+      circulationService: circulationService,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +68,9 @@ class BookDetailsScreen extends StatelessWidget {
                               child: _HeaderInfo(
                                 book: book,
                                 isReady: isReady,
+                                onBorrowTap: isReady
+                                    ? () => _openBorrowSheet(context)
+                                    : null,
                               ),
                             ),
                           ],
@@ -63,6 +85,9 @@ class BookDetailsScreen extends StatelessWidget {
                               book: book,
                               isReady: isReady,
                               alignCenter: true,
+                              onBorrowTap: isReady
+                                  ? () => _openBorrowSheet(context)
+                                  : null,
                             ),
                           ],
                         );
@@ -232,17 +257,19 @@ class _LargePlaceholder extends StatelessWidget {
   }
 }
 
-/// Header text information containing Title, Author, and Status Badge.
+/// Header text information containing Title, Author, Status Badge, and Borrow Action.
 class _HeaderInfo extends StatelessWidget {
   const _HeaderInfo({
     required this.book,
     required this.isReady,
     this.alignCenter = false,
+    this.onBorrowTap,
   });
 
   final Book book;
   final bool isReady;
   final bool alignCenter;
+  final VoidCallback? onBorrowTap;
 
   @override
   Widget build(BuildContext context) {
@@ -289,7 +316,7 @@ class _HeaderInfo extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
 
         // Status Badge
         Container(
@@ -325,6 +352,35 @@ class _HeaderInfo extends StatelessWidget {
             ],
           ),
         ),
+        const SizedBox(height: 16),
+
+        // ── Prominent Borrow Book Action ─────────────────────────────
+        if (isReady)
+          FilledButton.icon(
+            key: const Key('book_details_borrow_btn'),
+            onPressed: onBorrowTap,
+            icon: const Icon(Icons.bookmark_add_rounded, size: 20),
+            label: const Text('Borrow Book'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          )
+        else
+          FilledButton.icon(
+            key: const Key('book_details_borrow_btn_disabled'),
+            onPressed: null,
+            icon: const Icon(Icons.do_not_disturb_on_outlined, size: 20),
+            label: const Text('Currently Unavailable'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
       ],
     );
   }
