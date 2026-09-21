@@ -47,8 +47,62 @@ class Book {
   /// Number of copies currently available on shelf.
   final int availableCopies;
 
+  /// Validates all book data fields according to library system invariants.
+  ///
+  /// Throws an [ArgumentError] if any requirement is violated.
+  void validate() {
+    validateBookData(
+      title: title,
+      author: author,
+      description: description,
+      totalCopies: totalCopies,
+      availableCopies: availableCopies,
+      publishedYear: publishedYear,
+    );
+  }
+
+  /// Static helper to validate book input parameters prior to model creation or persistence.
+  ///
+  /// Throws an [ArgumentError] if any requirement is violated.
+  static void validateBookData({
+    required String title,
+    required String author,
+    required String description,
+    required int totalCopies,
+    required int availableCopies,
+    int? publishedYear,
+  }) {
+    if (title.trim().isEmpty) {
+      throw ArgumentError('Book title cannot be empty.');
+    }
+    if (author.trim().isEmpty) {
+      throw ArgumentError('Book author cannot be empty.');
+    }
+    if (description.trim().isEmpty) {
+      throw ArgumentError('Book description cannot be empty.');
+    }
+    if (totalCopies < 1) {
+      throw ArgumentError('Total copies must be at least 1.');
+    }
+    if (availableCopies < 0) {
+      throw ArgumentError('Available copies cannot be negative.');
+    }
+    if (availableCopies > totalCopies) {
+      throw ArgumentError(
+        'Available copies ($availableCopies) cannot exceed total copies ($totalCopies).',
+      );
+    }
+    if (publishedYear != null &&
+        (publishedYear < 1 || publishedYear > DateTime.now().year + 5)) {
+      throw ArgumentError('Invalid publication year: $publishedYear.');
+    }
+  }
+
   /// Factory constructor to deserialize a [Book] from a Firestore document map.
   factory Book.fromFirestore(Map<String, dynamic> data, String id) {
+    final total = (data['totalCopies'] as num?)?.toInt() ?? 1;
+    final available = (data['availableCopies'] as num?)?.toInt() ?? 1;
+
     return Book(
       id: id,
       title: data['title'] as String? ?? '',
@@ -58,23 +112,25 @@ class Book {
       isbn: data['isbn'] as String?,
       category: data['category'] as String?,
       publishedYear: (data['publishedYear'] as num?)?.toInt(),
-      isAvailable: data['isAvailable'] as bool? ?? true,
-      totalCopies: (data['totalCopies'] as num?)?.toInt() ?? 1,
-      availableCopies: (data['availableCopies'] as num?)?.toInt() ?? 1,
+      isAvailable: data['isAvailable'] as bool? ?? (available > 0),
+      totalCopies: total,
+      availableCopies: available,
     );
   }
 
   /// Converts this [Book] into a map suitable for Firestore storage.
   Map<String, dynamic> toFirestore() {
     return {
-      'title': title,
-      'author': author,
-      'description': description,
-      if (imageUrl != null) 'imageUrl': imageUrl,
-      if (isbn != null) 'isbn': isbn,
-      if (category != null) 'category': category,
+      'title': title.trim(),
+      'author': author.trim(),
+      'description': description.trim(),
+      if (imageUrl != null && imageUrl!.trim().isNotEmpty)
+        'imageUrl': imageUrl!.trim(),
+      if (isbn != null && isbn!.trim().isNotEmpty) 'isbn': isbn!.trim(),
+      if (category != null && category!.trim().isNotEmpty)
+        'category': category!.trim(),
       if (publishedYear != null) 'publishedYear': publishedYear,
-      'isAvailable': isAvailable,
+      'isAvailable': availableCopies > 0,
       'totalCopies': totalCopies,
       'availableCopies': availableCopies,
     };
@@ -94,6 +150,7 @@ class Book {
     int? totalCopies,
     int? availableCopies,
   }) {
+    final updatedAvailableCopies = availableCopies ?? this.availableCopies;
     return Book(
       id: id ?? this.id,
       title: title ?? this.title,
@@ -103,9 +160,9 @@ class Book {
       isbn: isbn ?? this.isbn,
       category: category ?? this.category,
       publishedYear: publishedYear ?? this.publishedYear,
-      isAvailable: isAvailable ?? this.isAvailable,
+      isAvailable: isAvailable ?? (updatedAvailableCopies > 0),
       totalCopies: totalCopies ?? this.totalCopies,
-      availableCopies: availableCopies ?? this.availableCopies,
+      availableCopies: updatedAvailableCopies,
     );
   }
 
@@ -143,6 +200,6 @@ class Book {
 
   @override
   String toString() {
-    return 'Book(id: $id, title: $title, author: $author, isAvailable: $isAvailable)';
+    return 'Book(id: $id, title: $title, author: $author, isAvailable: $isAvailable, availableCopies: $availableCopies/$totalCopies)';
   }
 }
