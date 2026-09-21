@@ -1,0 +1,122 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──────────────────────────────────────────────
+    
+    /// Checks whether the request is made by an authenticated user.
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    /// Checks if the request is made by the user corresponding to [userId].
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    /// Determines if the requesting user possesses staff or admin privileges.
+    /// Checks custom claims first, then falls back to checking the users collection.
+    function isStaff() {
+      return isAuthenticated() && (
+        request.auth.token.role == 'staff' ||
+        request.auth.token.role == 'admin' ||
+        request.auth.token.isStaff == true ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'staff' ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'))
+      );
+    }
+
+    /// Validates all required fields and copy invariant constraints on book data.
+    function isValidBook(data) {
+      return data.title is string && data.title.size() > 0 &&
+             data.author is string && data.author.size() > 0 &&
+             data.description is string && data.description.size() > 0 &&
+             data.totalCopies is int && data.totalCopies >= 1 &&
+             data.availableCopies is int && data.availableCopies >= 0 &&
+             data.availableCopies <= data.totalCopies &&
+             data.isAvailable is bool &&
+             data.isAvailable == (data.availableCopies > 0);
+    }
+
+    // ── Users Collection (/users/{userId}) ────────────────────────────
+    // Self-elevation is prohibited: members cannot grant themselves staff roles.
+    match /users/{userId} {
+      // Authenticated users can read member/staff profiles
+      allow read: if isAuthenticated();
+
+      // Users can create their own profile with 'member' role only; staff can assign any role
+      allow create: if isOwner(userId) && (
+        !('role' in request.resource.data) || request.resource.data.role == 'member'
+      ) || isStaff();
+
+      // Users can update their own profile details but CANNOT modify their role
+      allow update: if isStaff() || (
+        isOwner(userId) && (
+          !('role' in request.resource.data) ||
+          request.resource.data.role == resource.data.role ||
+          (!('role' in resource.data) && request.resource.data.role == 'member')
+        )
+      );
+
+      // Only staff/admin can delete user profiles
+      allow delete: if isStaff();
+    }
+
+    // ── Books Collection (/books/{bookId}) ────────────────────────────
+    match /books/{bookId} {
+      // Catalog read access is open to all users / public
+      allow read: if true;
+
+      // Only authorized staff can create new books in the catalog
+      allow create: if isStaff() && isValidBook(request.resource.data);
+
+      // Staff can update all book fields.
+      // Non-staff members are restricted to updating availableCopies and isAvailable during borrow/return transactions.
+      allow update: if (isStaff() && isValidBook(request.resource.data)) || (
+        isAuthenticated() &&
+        request.resource.data.title == resource.data.title &&
+        request.resource.data.author == resource.data.author &&
+        request.resource.data.description == resource.data.description &&
+        request.resource.data.totalCopies == resource.data.totalCopies &&
+        request.resource.data.availableCopies is int &&
+        request.resource.data.availableCopies >= 0 &&
+        request.resource.data.availableCopies <= resource.data.totalCopies &&
+        request.resource.data.isAvailable == (request.resource.data.availableCopies > 0)
+      );
+
+      // Only staff can delete books from the catalog
+      allow delete: if isStaff();
+    }
+
+    // ── Loans Collection (/loans/{loanId}) ────────────────────────────
+    match /loans/{loanId} {
+      // Members can read their own loan records; staff can inspect all circulation records
+      allow read: if isAuthenticated() && (
+        resource.data.memberId == request.auth.uid || isStaff()
+      );
+
+      // Members can create loans for themselves; staff can record loans for any member
+      allow create: if isAuthenticated() && (
+        (request.resource.data.memberId == request.auth.uid && request.resource.data.status == 'active') ||
+        isStaff()
+      );
+
+      // Members can only update their own loan from 'active' to 'returned'.
+      // Members CANNOT modify another user's loan. Staff can update any loan record.
+      allow update: if isStaff() || (
+        isAuthenticated() &&
+        resource.data.memberId == request.auth.uid &&
+        request.resource.data.memberId == resource.data.memberId &&
+        request.resource.data.bookId == resource.data.bookId &&
+        resource.data.status == 'active' &&
+        request.resource.data.status == 'returned' &&
+        request.resource.data.returnDate != null
+      );
+
+      // Only staff can delete or archive loan records
+      allow delete: if isStaff();
+    }
+  }
+}

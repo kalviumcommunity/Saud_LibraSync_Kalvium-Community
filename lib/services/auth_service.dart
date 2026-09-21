@@ -1,12 +1,23 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// Reusable service for managing Firebase Authentication in LibraSync.
+/// Reusable service for managing Firebase Authentication and user roles in LibraSync.
 class AuthService {
-  final FirebaseAuth? _customAuth;
+  AuthService({
+    FirebaseAuth? auth,
+    FirebaseFirestore? firestore,
+  })  : _customAuth = auth,
+        _customFirestore = firestore;
 
-  AuthService({FirebaseAuth? auth}) : _customAuth = auth;
+  final FirebaseAuth? _customAuth;
+  final FirebaseFirestore? _customFirestore;
 
   FirebaseAuth get auth => _customAuth ?? FirebaseAuth.instance;
+  FirebaseFirestore get firestore =>
+      _customFirestore ?? FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _usersCollection =>
+      firestore.collection('users');
 
   /// Stream of authentication state changes (logged in / logged out).
   Stream<User?> get authStateChanges {
@@ -24,6 +35,35 @@ class AuthService {
     } catch (_) {
       return null;
     }
+  }
+
+  /// Retrieves the role of a user from their Firestore profile or custom claims.
+  /// Defaults to 'member' if no explicit role is defined.
+  Future<String> getUserRole([String? uid]) async {
+    final targetUid = uid ?? currentUser?.uid;
+    if (targetUid == null || targetUid.isEmpty) {
+      return 'guest';
+    }
+
+    try {
+      final doc = await _usersCollection.doc(targetUid).get();
+      if (doc.exists && doc.data() != null) {
+        final role = doc.data()!['role'] as String?;
+        if (role != null && role.isNotEmpty) {
+          return role.toLowerCase();
+        }
+      }
+    } catch (_) {
+      // Fall through to member role
+    }
+
+    return 'member';
+  }
+
+  /// Checks whether the user with [uid] (or the currently signed-in user) possesses staff privileges.
+  Future<bool> isStaffUser([String? uid]) async {
+    final role = await getUserRole(uid);
+    return role == 'staff' || role == 'admin';
   }
 
   /// Signs in a user with their [email] and [password].
@@ -54,10 +94,27 @@ class AuthService {
         email: email.trim(),
         password: password,
       );
-      if (displayName != null && displayName.trim().isNotEmpty) {
-        await credential.user?.updateDisplayName(displayName.trim());
-        await credential.user?.reload();
+
+      final user = credential.user;
+      if (user != null) {
+        if (displayName != null && displayName.trim().isNotEmpty) {
+          await user.updateDisplayName(displayName.trim());
+          await user.reload();
+        }
+
+        // Initialize user document in 'users' collection with 'member' role
+        try {
+          await _usersCollection.doc(user.uid).set({
+            'uid': user.uid,
+            'email': user.email ?? email.trim(),
+            'displayName': displayName?.trim() ?? user.displayName,
+            'role': 'member',
+          }, SetOptions(merge: true));
+        } catch (_) {
+          // Non-blocking in case of offline / test environment
+        }
       }
+
       return credential;
     } on FirebaseAuthException catch (e) {
       throw getReadableAuthError(e);
