@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/dashboard_card.dart';
 import 'catalog/book_catalog_screen.dart';
+import 'circulation/member_circulation_screen.dart';
 
 /// The main home / dashboard screen for LibraSync.
 ///
@@ -123,8 +124,15 @@ class HomeScreen extends StatelessWidget {
                       DashboardCard(
                         icon: Icons.swap_horiz_rounded,
                         label: 'Borrowing',
-                        count: 0,
-                        onTap: () => _showComingSoon(context, 'Borrowing'),
+                        count: null,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MemberCirculationScreen(),
+                            ),
+                          );
+                        },
                       ),
                     ],
                   );
