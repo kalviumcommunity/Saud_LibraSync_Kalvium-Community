@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/dashboard_card.dart';
+import 'catalog/book_catalog_screen.dart';
 
 /// The main home / dashboard screen for LibraSync.
 ///
@@ -98,8 +99,14 @@ class HomeScreen extends StatelessWidget {
                       DashboardCard(
                         icon: Icons.menu_book_rounded,
                         label: 'Books',
-                        count: 0,
-                        onTap: () => _showComingSoon(context, 'Books'),
+                        count: null,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const BookCatalogScreen(),
+                            ),
+                          );
+                        },
                       ),
                       DashboardCard(
                         icon: Icons.people_alt_rounded,
