@@ -1,4 +1,9 @@
+// ignore_for_file: subtype_of_sealed_class
+
 import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -7,9 +12,11 @@ import 'package:librasync/models/loan_record.dart';
 import 'package:librasync/screens/catalog/book_details_screen.dart';
 import 'package:librasync/screens/circulation/member_circulation_screen.dart';
 import 'package:librasync/screens/home_screen.dart';
+import 'package:librasync/services/circulation_service.dart';
 import 'package:librasync/widgets/circulation/borrow_confirmation_sheet.dart';
 import 'package:librasync/widgets/circulation/borrowed_book_card.dart';
 import 'package:librasync/widgets/circulation/return_confirmation_dialog.dart';
+
 
 void main() {
   final availableBook = Book(
@@ -413,4 +420,589 @@ void main() {
       expect(find.text('My Borrowed Books'), findsOneWidget);
     });
   });
+
+  group('CirculationService Transaction & Security Unit Tests', () {
+    late FakeFirebaseFirestore fakeFirestore;
+    late FakeUser fakeUser;
+    late FakeFirebaseAuth fakeAuth;
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      fakeUser = FakeUser(
+        uid: 'user-123',
+        email: 'user@example.com',
+        displayName: 'Test User',
+      );
+      fakeAuth = FakeFirebaseAuth(currentUser: fakeUser);
+    });
+
+    test('requestBorrow throws error when user is unauthenticated', () async {
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: FakeFirebaseAuth(currentUser: null),
+      );
+
+      expect(
+        () => service.requestBorrow(book: availableBook, memberId: 'user-123'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Authentication required'),
+          ),
+        ),
+      );
+    });
+
+    test('requestBorrow throws error when book does not exist', () async {
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestBorrow(book: availableBook, memberId: 'user-123'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('was not found'),
+          ),
+        ),
+      );
+    });
+
+    test('requestBorrow throws error when book availableCopies is 0', () async {
+      fakeFirestore.store.documents['books/${unavailableBook.id}'] =
+          unavailableBook.toFirestore();
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestBorrow(
+          book: unavailableBook,
+          memberId: 'user-123',
+        ),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('No available copies'),
+          ),
+        ),
+      );
+    });
+
+    test(
+        'requestBorrow throws error when user already has an active loan for same book',
+        () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] =
+          availableBook.toFirestore();
+      fakeFirestore.store.documents['loans/existing-loan'] = {
+        'bookId': availableBook.id,
+        'memberId': 'user-123',
+        'status': 'active',
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestBorrow(book: availableBook, memberId: 'user-123'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('already have an active loan'),
+          ),
+        ),
+      );
+    });
+
+    test(
+        'requestBorrow succeeds: decrements copies, sets isAvailable, creates loan',
+        () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] =
+          availableBook.toFirestore(); // availableCopies: 3
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      await service.requestBorrow(book: availableBook, memberId: 'user-123');
+
+      final updatedBookMap =
+          fakeFirestore.store.documents['books/${availableBook.id}']!;
+      expect(updatedBookMap['availableCopies'], 2);
+      expect(updatedBookMap['isAvailable'], true);
+
+      final loanDocs = fakeFirestore.store.documents.entries
+          .where((e) => e.key.startsWith('loans/'))
+          .toList();
+      expect(loanDocs.length, 1);
+      final loanData = loanDocs.first.value;
+      expect(loanData['bookId'], availableBook.id);
+      expect(loanData['memberId'], 'user-123');
+      expect(loanData['status'], 'active');
+    });
+
+    test('requestBorrow sets isAvailable false when last copy borrowed',
+        () async {
+      final singleCopyBook = availableBook.copyWith(availableCopies: 1);
+      fakeFirestore.store.documents['books/${singleCopyBook.id}'] =
+          singleCopyBook.toFirestore();
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      await service.requestBorrow(book: singleCopyBook, memberId: 'user-123');
+
+      final updatedBookMap =
+          fakeFirestore.store.documents['books/${singleCopyBook.id}']!;
+      expect(updatedBookMap['availableCopies'], 0);
+      expect(updatedBookMap['isAvailable'], false);
+    });
+
+    test('requestReturn throws error when user is unauthenticated', () async {
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: FakeFirebaseAuth(currentUser: null),
+      );
+
+      expect(
+        () => service.requestReturn(loanId: 'loan-1'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('Authentication required'),
+          ),
+        ),
+      );
+    });
+
+    test('requestReturn throws error when loan does not exist', () async {
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestReturn(loanId: 'non-existent-loan'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('does not exist'),
+          ),
+        ),
+      );
+    });
+
+    test('requestReturn throws error when loan belongs to another user',
+        () async {
+      fakeFirestore.store.documents['loans/other-loan'] = {
+        'bookId': availableBook.id,
+        'memberId': 'different-user-999',
+        'status': 'active',
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestReturn(loanId: 'other-loan'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('not authorized'),
+          ),
+        ),
+      );
+    });
+
+    test('requestReturn throws error when loan is already returned', () async {
+      fakeFirestore.store.documents['loans/returned-loan'] = {
+        'bookId': availableBook.id,
+        'memberId': 'user-123',
+        'status': 'returned',
+        'returnDate': Timestamp.now(),
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      expect(
+        () => service.requestReturn(loanId: 'returned-loan'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('already been returned'),
+          ),
+        ),
+      );
+    });
+
+    test(
+        'requestReturn succeeds: updates loan status and increments availableCopies',
+        () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] =
+          availableBook.toFirestore(); // availableCopies: 3
+      fakeFirestore.store.documents['loans/valid-loan'] = {
+        'bookId': availableBook.id,
+        'bookTitle': availableBook.title,
+        'bookAuthor': availableBook.author,
+        'borrowDate': Timestamp.now(),
+        'dueDate': Timestamp.now(),
+        'memberId': 'user-123',
+        'status': 'active',
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      await service.requestReturn(loanId: 'valid-loan');
+
+      final updatedLoanMap =
+          fakeFirestore.store.documents['loans/valid-loan']!;
+      expect(updatedLoanMap['status'], 'returned');
+      expect(updatedLoanMap['returnDate'], isNotNull);
+
+      final updatedBookMap =
+          fakeFirestore.store.documents['books/${availableBook.id}']!;
+      expect(updatedBookMap['availableCopies'], 4);
+      expect(updatedBookMap['isAvailable'], true);
+    });
+
+    test(
+        'requestReturn succeeds cleanly when book document is missing in catalog',
+        () async {
+      fakeFirestore.store.documents['loans/orphan-loan'] = {
+        'bookId': 'deleted-book-999',
+        'bookTitle': 'Deleted Book',
+        'bookAuthor': 'Unknown Author',
+        'borrowDate': Timestamp.now(),
+        'dueDate': Timestamp.now(),
+        'memberId': 'user-123',
+        'status': 'active',
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      await service.requestReturn(loanId: 'orphan-loan');
+
+      final updatedLoanMap =
+          fakeFirestore.store.documents['loans/orphan-loan']!;
+      expect(updatedLoanMap['status'], 'returned');
+      expect(updatedLoanMap['returnDate'], isNotNull);
+    });
+
+    test('requestReturn fails on second call and does not double-increment copies',
+        () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] =
+          availableBook.toFirestore(); // availableCopies: 3
+      fakeFirestore.store.documents['loans/double-return-loan'] = {
+        'bookId': availableBook.id,
+        'bookTitle': availableBook.title,
+        'bookAuthor': availableBook.author,
+        'borrowDate': Timestamp.now(),
+        'dueDate': Timestamp.now(),
+        'memberId': 'user-123',
+        'status': 'active',
+      };
+
+      final service = CirculationService(
+        firestore: fakeFirestore,
+        auth: fakeAuth,
+      );
+
+      // First return succeeds
+      await service.requestReturn(loanId: 'double-return-loan');
+      expect(
+        fakeFirestore.store.documents['books/${availableBook.id}']!['availableCopies'],
+        4,
+      );
+
+      // Second return throws error
+      expect(
+        () => service.requestReturn(loanId: 'double-return-loan'),
+        throwsA(
+          isA<Exception>().having(
+            (e) => e.toString(),
+            'message',
+            contains('already been returned'),
+          ),
+        ),
+      );
+
+      // Copies remain 4, NOT 5
+      expect(
+        fakeFirestore.store.documents['books/${availableBook.id}']!['availableCopies'],
+        4,
+      );
+    });
+  });
 }
+
+// ── Fake Test Doubles ────────────────────────────────────────────────────────
+
+class FakeUser extends Fake implements User {
+  FakeUser({required this.uid, this.email, this.displayName});
+
+  @override
+  final String uid;
+
+  @override
+  final String? email;
+
+  @override
+  final String? displayName;
+}
+
+class FakeFirebaseAuth extends Fake implements FirebaseAuth {
+  FakeFirebaseAuth({this._currentUser});
+
+  final User? _currentUser;
+
+  @override
+  User? get currentUser => _currentUser;
+}
+
+class FakeDocumentSnapshot<T extends Object?> extends Fake
+    implements DocumentSnapshot<T> {
+  FakeDocumentSnapshot(this._id, this._data);
+
+  final String _id;
+  final T? _data;
+
+  @override
+  String get id => _id;
+
+  @override
+  bool get exists => _data != null;
+
+  @override
+  T? data() => _data;
+}
+
+class FakeQueryDocumentSnapshot<T extends Object?> extends Fake
+    implements QueryDocumentSnapshot<T> {
+  FakeQueryDocumentSnapshot(this._id, this._data);
+
+  final String _id;
+  final T _data;
+
+  @override
+  String get id => _id;
+
+  @override
+  bool get exists => true;
+
+  @override
+  T data() => _data;
+}
+
+class FakeQuerySnapshot<T extends Object?> extends Fake
+    implements QuerySnapshot<T> {
+  FakeQuerySnapshot(this._docs);
+
+  final List<QueryDocumentSnapshot<T>> _docs;
+
+  @override
+  List<QueryDocumentSnapshot<T>> get docs => _docs;
+}
+
+class FakeDocumentReference<T extends Object?> extends Fake
+    implements DocumentReference<T> {
+  FakeDocumentReference(this._path, this._store);
+
+  final String _path;
+  final FakeFirestoreData _store;
+
+  @override
+  String get id => _path.split('/').last;
+
+  @override
+  Future<DocumentSnapshot<T>> get([GetOptions? options]) async {
+    final data = _store.documents[_path];
+    return FakeDocumentSnapshot<T>(id, data as T?);
+  }
+}
+
+class FakeQuery<T extends Object?> extends Fake implements Query<T> {
+  FakeQuery(this._collectionPath, this._store, [this._whereFilters = const []]);
+
+  final String _collectionPath;
+  final List<Map<String, dynamic>> _whereFilters;
+  final FakeFirestoreData _store;
+
+  @override
+  Query<T> where(
+    Object field, {
+    Object? isEqualTo,
+    Object? isLessThan,
+    Object? isLessThanOrEqualTo,
+    Object? isGreaterThan,
+    Object? isGreaterThanOrEqualTo,
+    Object? isNotEqualTo,
+    Object? arrayContains,
+    Iterable<Object?>? arrayContainsAny,
+    Iterable<Object?>? whereIn,
+    Iterable<Object?>? whereNotIn,
+    bool? isNull,
+  }) {
+    final newFilters = List<Map<String, dynamic>>.from(_whereFilters)
+      ..add({'field': field, 'isEqualTo': isEqualTo});
+    return FakeQuery<T>(_collectionPath, _store, newFilters);
+  }
+
+  @override
+  Future<QuerySnapshot<T>> get([GetOptions? options]) async {
+    final docs = <QueryDocumentSnapshot<T>>[];
+    _store.documents.forEach((path, data) {
+      if (path.startsWith('$_collectionPath/')) {
+        final docId = path.substring('$_collectionPath/'.length);
+        bool matches = true;
+        for (final filter in _whereFilters) {
+          final field = filter['field'] as String;
+          final target = filter['isEqualTo'];
+          if (data[field] != target) {
+            matches = false;
+            break;
+          }
+        }
+        if (matches) {
+          docs.add(FakeQueryDocumentSnapshot<T>(docId, data as T));
+        }
+      }
+    });
+    return FakeQuerySnapshot<T>(docs);
+  }
+}
+
+class FakeCollectionReference<T extends Object?> extends Fake
+    implements CollectionReference<T> {
+  FakeCollectionReference(this._collectionPath, this._store);
+
+  final String _collectionPath;
+  final FakeFirestoreData _store;
+
+  @override
+  DocumentReference<T> doc([String? path]) {
+    final docId = path ?? 'generated_id_${_store.documents.length + 1}';
+    return FakeDocumentReference<T>('$_collectionPath/$docId', _store);
+  }
+
+  @override
+  Query<T> where(
+    Object field, {
+    Object? isEqualTo,
+    Object? isLessThan,
+    Object? isLessThanOrEqualTo,
+    Object? isGreaterThan,
+    Object? isGreaterThanOrEqualTo,
+    Object? isNotEqualTo,
+    Object? arrayContains,
+    Iterable<Object?>? arrayContainsAny,
+    Iterable<Object?>? whereIn,
+    Iterable<Object?>? whereNotIn,
+    bool? isNull,
+  }) {
+    return FakeQuery<T>(_collectionPath, _store).where(field, isEqualTo: isEqualTo);
+  }
+
+  @override
+  Stream<QuerySnapshot<T>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) {
+    return Stream.value(FakeQuerySnapshot<T>([]));
+  }
+}
+
+class FakeTransaction extends Fake implements Transaction {
+  FakeTransaction(this._store);
+
+  final FakeFirestoreData _store;
+  bool _hasWritten = false;
+
+  @override
+  Future<DocumentSnapshot<T>> get<T extends Object?>(
+      DocumentReference<T> documentSnapshot) async {
+    if (_hasWritten) {
+      throw StateError(
+        'FirestoreException: Reads must occur before any writes in a transaction.',
+      );
+    }
+    final ref = documentSnapshot as FakeDocumentReference<T>;
+    final data = _store.documents[ref._path];
+    return FakeDocumentSnapshot<T>(ref.id, data as T?);
+  }
+
+  @override
+  Transaction update(
+      DocumentReference<Object?> documentSnapshot, Map<Object, Object?> data) {
+    _hasWritten = true;
+    final ref = documentSnapshot as FakeDocumentReference;
+    final existing =
+        Map<String, dynamic>.from(_store.documents[ref._path] ?? {});
+    data.forEach((k, v) => existing[k.toString()] = v);
+    _store.documents[ref._path] = existing;
+    return this;
+  }
+
+  @override
+  Transaction set<T extends Object?>(
+      DocumentReference<T> documentSnapshot, T data,
+      [SetOptions? options]) {
+    _hasWritten = true;
+    final ref = documentSnapshot as FakeDocumentReference<T>;
+    if (data is Map<String, dynamic>) {
+      _store.documents[ref._path] = Map<String, dynamic>.from(data);
+    }
+    return this;
+  }
+}
+
+
+class FakeFirestoreData {
+  final Map<String, Map<String, dynamic>> documents = {};
+}
+
+class FakeFirebaseFirestore extends Fake implements FirebaseFirestore {
+  final FakeFirestoreData store = FakeFirestoreData();
+
+  @override
+  CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
+    return FakeCollectionReference<Map<String, dynamic>>(collectionPath, store);
+  }
+
+  @override
+  Future<T> runTransaction<T>(TransactionHandler<T> transactionHandler,
+      {Duration timeout = const Duration(seconds: 30),
+      int maxAttempts = 5}) async {
+    final transaction = FakeTransaction(store);
+    return await transactionHandler(transaction);
+  }
+}
+
+
