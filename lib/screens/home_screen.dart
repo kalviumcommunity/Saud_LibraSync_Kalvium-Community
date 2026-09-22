@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../widgets/dashboard_card.dart';
+import 'branches/branches_screen.dart';
 import 'catalog/book_catalog_screen.dart';
 import 'circulation/member_circulation_screen.dart';
 
@@ -78,9 +79,8 @@ class HomeScreen extends StatelessWidget {
               // ── Section Title ───────────────────────────────────────
               Text(
                 'Quick Access',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
 
@@ -88,8 +88,7 @@ class HomeScreen extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   // Use 2 columns on narrow screens, 4 on wide screens.
-                  final crossAxisCount =
-                      constraints.maxWidth >= 600 ? 4 : 2;
+                  final crossAxisCount = constraints.maxWidth >= 600 ? 4 : 2;
                   return GridView.count(
                     crossAxisCount: crossAxisCount,
                     mainAxisSpacing: 12,
@@ -118,8 +117,14 @@ class HomeScreen extends StatelessWidget {
                       DashboardCard(
                         icon: Icons.location_city_rounded,
                         label: 'Branches',
-                        count: 0,
-                        onTap: () => _showComingSoon(context, 'Branches'),
+                        count: null,
+                        onTap: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const BranchesScreen(),
+                            ),
+                          );
+                        },
                       ),
                       DashboardCard(
                         icon: Icons.swap_horiz_rounded,
@@ -143,9 +148,8 @@ class HomeScreen extends StatelessWidget {
               // ── Recent Activity Placeholder ─────────────────────────
               Text(
                 'Recent Activity',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(context).textTheme.titleLarge
+                    ?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               Card(
@@ -165,12 +169,8 @@ class HomeScreen extends StatelessWidget {
                         const SizedBox(height: 12),
                         Text(
                           'No recent activity yet.',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodyLarge
-                              ?.copyWith(
-                                color: colorScheme.onSurfaceVariant,
-                              ),
+                          style: Theme.of(context).textTheme.bodyLarge
+                              ?.copyWith(color: colorScheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -205,7 +205,8 @@ class _WelcomeBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = AuthService().currentUser;
-    final userGreeting = user?.displayName != null && user!.displayName!.trim().isNotEmpty
+    final userGreeting =
+        user?.displayName != null && user!.displayName!.trim().isNotEmpty
         ? 'Hello, ${user.displayName}! Manage your library collection.'
         : 'Your community library management hub.';
 
@@ -228,16 +229,15 @@ class _WelcomeBanner extends StatelessWidget {
                   Text(
                     'Welcome to LibraSync',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: colorScheme.onPrimaryContainer,
-                        ),
+                      fontWeight: FontWeight.bold,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     userGreeting,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onPrimaryContainer,
-                        ),
+                    style: Theme.of(context).textTheme.bodyMedium
+                        ?.copyWith(color: colorScheme.onPrimaryContainer),
                   ),
                 ],
               ),
