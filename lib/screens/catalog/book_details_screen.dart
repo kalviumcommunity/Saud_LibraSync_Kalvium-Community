@@ -22,13 +22,19 @@ class BookDetailsScreen extends StatelessWidget {
   /// Optional custom borrow callback for testing or custom pipelines.
   final Future<void> Function()? onConfirmBorrow;
 
-  void _openBorrowSheet(BuildContext context) {
-    BorrowConfirmationSheet.show(
+  Future<void> _openBorrowSheet(BuildContext context) async {
+    final borrowed = await BorrowConfirmationSheet.show(
       context,
       book: book,
       onConfirmBorrow: onConfirmBorrow,
       circulationService: circulationService,
     );
+
+    // Propagate a successful borrow to the previous route (e.g.
+    // MemberCirculationScreen) so it can refresh the active loans stream.
+    if (borrowed == true && context.mounted) {
+      Navigator.of(context).pop(true);
+    }
   }
 
   @override
@@ -188,7 +194,7 @@ class _LargeCover extends StatelessWidget {
                         child: CircularProgressIndicator(
                           value: progress.expectedTotalBytes != null
                               ? progress.cumulativeBytesLoaded /
-                                  progress.expectedTotalBytes!
+                                    progress.expectedTotalBytes!
                               : null,
                         ),
                       ),
@@ -242,9 +248,9 @@ class _LargePlaceholder extends StatelessWidget {
               Text(
                 book.title.isNotEmpty ? book.title : 'LibraSync Book',
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.onPrimaryContainer,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
@@ -276,8 +282,9 @@ class _HeaderInfo extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    final crossAxis =
-        alignCenter ? CrossAxisAlignment.center : CrossAxisAlignment.start;
+    final crossAxis = alignCenter
+        ? CrossAxisAlignment.center
+        : CrossAxisAlignment.start;
     final textAlign = alignCenter ? TextAlign.center : TextAlign.start;
 
     return Column(
@@ -334,7 +341,9 @@ class _HeaderInfo extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isReady ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+                isReady
+                    ? Icons.check_circle_rounded
+                    : Icons.info_outline_rounded,
                 size: 16,
                 color: isReady ? Colors.green.shade800 : Colors.orange.shade800,
               ),
@@ -345,8 +354,9 @@ class _HeaderInfo extends StatelessWidget {
                     : 'Currently Unavailable (0 of ${book.totalCopies} copies)',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color:
-                      isReady ? Colors.green.shade800 : Colors.orange.shade800,
+                  color: isReady
+                      ? Colors.green.shade800
+                      : Colors.orange.shade800,
                 ),
               ),
             ],
@@ -447,9 +457,7 @@ class _MetaCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: colorScheme.surfaceContainerHighest.withAlpha(120),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: colorScheme.outlineVariant.withAlpha(60),
-        ),
+        border: Border.all(color: colorScheme.outlineVariant.withAlpha(60)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

@@ -150,6 +150,45 @@ void main() {
       expect(find.byKey(const Key('borrow_confirm_btn')), findsOneWidget);
       expect(find.byKey(const Key('borrow_cancel_btn')), findsOneWidget);
     });
+
+    testWidgets(
+        'Completing borrow in BorrowConfirmationSheet pops screen with true',
+        (WidgetTester tester) async {
+      bool? poppedResult;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                poppedResult = await Navigator.of(context).push<bool>(
+                  MaterialPageRoute(
+                    builder: (context) => BookDetailsScreen(
+                      book: availableBook,
+                      onConfirmBorrow: () async {},
+                    ),
+                  ),
+                );
+              },
+              child: const Text('Open Details'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Details'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('book_details_borrow_btn')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('borrow_confirm_btn')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('borrow_success_done_btn')));
+      await tester.pumpAndSettle();
+
+      expect(poppedResult, isTrue);
+    });
   });
 
   group('BorrowConfirmationSheet Widget Tests', () {
