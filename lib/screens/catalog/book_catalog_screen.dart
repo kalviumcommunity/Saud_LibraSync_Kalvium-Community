@@ -45,6 +45,19 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
     _searchController.addListener(_onSearchChanged);
   }
 
+  @override
+  void didUpdateWidget(covariant BookCatalogScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isStaff != oldWidget.isStaff ||
+        widget.bookService != oldWidget.bookService) {
+      _checkStaffStatus();
+    }
+    if (widget.booksStream != oldWidget.booksStream ||
+        widget.bookService != oldWidget.bookService) {
+      _initStream();
+    }
+  }
+
   Future<void> _checkStaffStatus() async {
     if (widget.isStaff != null) {
       if (mounted) setState(() => _isStaff = widget.isStaff!);

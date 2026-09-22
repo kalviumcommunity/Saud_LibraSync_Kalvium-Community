@@ -3,11 +3,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 /// Reusable service for managing Firebase Authentication and user roles in LibraSync.
 class AuthService {
-  AuthService({
-    FirebaseAuth? auth,
-    FirebaseFirestore? firestore,
-  })  : _customAuth = auth,
-        _customFirestore = firestore;
+  AuthService({FirebaseAuth? auth, FirebaseFirestore? firestore})
+    : _customAuth = auth,
+      _customFirestore = firestore;
 
   final FirebaseAuth? _customAuth;
   final FirebaseFirestore? _customFirestore;
@@ -49,8 +47,8 @@ class AuthService {
       final doc = await _usersCollection.doc(targetUid).get();
       if (doc.exists && doc.data() != null) {
         final role = doc.data()!['role'] as String?;
-        if (role != null && role.isNotEmpty) {
-          return role.toLowerCase();
+        if (role != null && role.trim().isNotEmpty) {
+          return role.trim().toLowerCase();
         }
       }
     } catch (_) {

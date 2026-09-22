@@ -49,6 +49,15 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     _checkStaffStatus();
   }
 
+  @override
+  void didUpdateWidget(covariant BookDetailsScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isStaff != oldWidget.isStaff ||
+        widget.bookService != oldWidget.bookService) {
+      _checkStaffStatus();
+    }
+  }
+
   Future<void> _checkStaffStatus() async {
     if (widget.isStaff != null) {
       if (mounted) setState(() => _isStaff = widget.isStaff!);
