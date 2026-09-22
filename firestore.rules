@@ -127,5 +127,14 @@ service cloud.firestore {
       // Only authorized staff can create, update, or delete branches
       allow write: if isStaff();
     }
+
+    // ── Book Copies Collection (/bookCopies/{copyId}) ─────────────────
+    match /bookCopies/{copyId} {
+      // Physical copy availability is readable by all users / public
+      allow read: if true;
+
+      // Only authorized staff can create, update, or delete book copies
+      allow write: if isStaff();
+    }
   }
 }
