@@ -1,16 +1,22 @@
 import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
+import '../../services/book_service.dart';
 import '../../services/circulation_service.dart';
+import '../../widgets/catalog/book_form_dialog.dart';
+import '../../widgets/catalog/delete_book_dialog.dart';
 import '../../widgets/circulation/borrow_confirmation_sheet.dart';
 
-/// Screen displaying comprehensive details for a selected [Book] and circulation actions.
-class BookDetailsScreen extends StatelessWidget {
+/// Screen displaying comprehensive details for a selected [Book], circulation actions,
+/// and staff management actions (editing details and deleting books).
+class BookDetailsScreen extends StatefulWidget {
   const BookDetailsScreen({
     super.key,
     required this.book,
     this.circulationService,
     this.onConfirmBorrow,
+    this.bookService,
+    this.isStaff,
   });
 
   /// The book to display.
@@ -22,18 +28,89 @@ class BookDetailsScreen extends StatelessWidget {
   /// Optional custom borrow callback for testing or custom pipelines.
   final Future<void> Function()? onConfirmBorrow;
 
-  Future<void> _openBorrowSheet(BuildContext context) async {
+  /// Optional custom book service instance.
+  final BookService? bookService;
+
+  /// Optional staff status override (useful for testing or direct permission pass-through).
+  final bool? isStaff;
+
+  @override
+  State<BookDetailsScreen> createState() => _BookDetailsScreenState();
+}
+
+class _BookDetailsScreenState extends State<BookDetailsScreen> {
+  late Book _currentBook;
+  bool _isStaff = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentBook = widget.book;
+    _checkStaffStatus();
+  }
+
+  Future<void> _checkStaffStatus() async {
+    if (widget.isStaff != null) {
+      if (mounted) setState(() => _isStaff = widget.isStaff!);
+      return;
+    }
+    final service = widget.bookService ?? BookService();
+    final staff = await service.isCurrentUserStaff();
+    if (mounted) {
+      setState(() => _isStaff = staff);
+    }
+  }
+
+  Future<void> _openBorrowSheet() async {
     final borrowed = await BorrowConfirmationSheet.show(
       context,
-      book: book,
-      onConfirmBorrow: onConfirmBorrow,
-      circulationService: circulationService,
+      book: _currentBook,
+      onConfirmBorrow: widget.onConfirmBorrow,
+      circulationService: widget.circulationService,
     );
 
     // Propagate a successful borrow to the previous route (e.g.
     // MemberCirculationScreen) so it can refresh the active loans stream.
-    if (borrowed == true && context.mounted) {
+    if (borrowed == true && mounted) {
       Navigator.of(context).pop(true);
+    }
+  }
+
+  Future<void> _handleEdit() async {
+    final updated = await BookFormDialog.show(
+      context,
+      book: _currentBook,
+      bookService: widget.bookService,
+    );
+
+    if (updated != null && mounted) {
+      setState(() {
+        _currentBook = updated;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${updated.title}" updated successfully.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    final deleted = await DeleteBookConfirmationDialog.show(
+      context,
+      book: _currentBook,
+      bookService: widget.bookService,
+    );
+
+    if (deleted == true && mounted) {
+      Navigator.of(context).pop(true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('"${_currentBook.title}" deleted from catalog.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -41,15 +118,32 @@ class BookDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final isReady = book.isAvailable && book.availableCopies > 0;
+    final isReady =
+        _currentBook.isAvailable && _currentBook.availableCopies > 0;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          book.title.isNotEmpty ? book.title : 'Book Details',
+          _currentBook.title.isNotEmpty ? _currentBook.title : 'Book Details',
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
+        actions: [
+          if (_isStaff) ...[
+            IconButton(
+              key: const Key('book_details_edit_btn'),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit Book',
+              onPressed: _handleEdit,
+            ),
+            IconButton(
+              key: const Key('book_details_delete_btn'),
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: 'Delete Book',
+              onPressed: _handleDelete,
+            ),
+          ],
+        ],
       ),
       body: SafeArea(
         child: Center(
@@ -68,14 +162,14 @@ class BookDetailsScreen extends StatelessWidget {
                         return Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _LargeCover(book: book),
+                            _LargeCover(book: _currentBook),
                             const SizedBox(width: 24),
                             Expanded(
                               child: _HeaderInfo(
-                                book: book,
+                                book: _currentBook,
                                 isReady: isReady,
                                 onBorrowTap: isReady
-                                    ? () => _openBorrowSheet(context)
+                                    ? () => _openBorrowSheet()
                                     : null,
                               ),
                             ),
@@ -85,14 +179,14 @@ class BookDetailsScreen extends StatelessWidget {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
-                            Center(child: _LargeCover(book: book)),
+                            Center(child: _LargeCover(book: _currentBook)),
                             const SizedBox(height: 20),
                             _HeaderInfo(
-                              book: book,
+                              book: _currentBook,
                               isReady: isReady,
                               alignCenter: true,
                               onBorrowTap: isReady
-                                  ? () => _openBorrowSheet(context)
+                                  ? () => _openBorrowSheet()
                                   : null,
                             ),
                           ],
@@ -112,7 +206,7 @@ class BookDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 12),
-                  _BookMetadataSection(book: book),
+                  _BookMetadataSection(book: _currentBook),
                   const SizedBox(height: 24),
 
                   // ── Description Section ───────────────────────────────
@@ -132,8 +226,8 @@ class BookDetailsScreen extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
-                        book.description.isNotEmpty
-                            ? book.description
+                        _currentBook.description.isNotEmpty
+                            ? _currentBook.description
                             : 'No synopsis available for this title.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           height: 1.6,

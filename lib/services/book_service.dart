@@ -8,11 +8,9 @@ import '../models/book.dart';
 /// Encapsulates all Firestore queries, validation, and role authorization logic,
 /// keeping the presentation layer decoupled from backend details.
 class BookService {
-  BookService({
-    FirebaseFirestore? firestore,
-    FirebaseAuth? auth,
-  })  : _customFirestore = firestore,
-        _customAuth = auth;
+  BookService({FirebaseFirestore? firestore, FirebaseAuth? auth})
+    : _customFirestore = firestore,
+      _customAuth = auth;
 
   final FirebaseFirestore? _customFirestore;
   final FirebaseAuth? _customAuth;
@@ -20,8 +18,7 @@ class BookService {
   FirebaseFirestore get _firestore =>
       _customFirestore ?? FirebaseFirestore.instance;
 
-  FirebaseAuth get _auth =>
-      _customAuth ?? FirebaseAuth.instance;
+  FirebaseAuth get _auth => _customAuth ?? FirebaseAuth.instance;
 
   /// Firestore collection reference for books.
   CollectionReference<Map<String, dynamic>> get _booksCollection =>
@@ -35,12 +32,12 @@ class BookService {
 
   /// Determines whether the currently signed-in user possesses staff privileges.
   Future<bool> isCurrentUserStaff() async {
-    final currentUser = _auth.currentUser;
-    if (currentUser == null) {
-      return false;
-    }
-
     try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) {
+        return false;
+      }
+
       final doc = await _usersCollection.doc(currentUser.uid).get();
       if (doc.exists && doc.data() != null) {
         final role = doc.data()!['role'] as String?;
@@ -49,7 +46,7 @@ class BookService {
         }
       }
     } catch (_) {
-      // In case of network / permission errors, fall through
+      // In case of network / uninitialized / permission errors, fall through
     }
 
     return false;
@@ -125,10 +122,7 @@ class BookService {
   /// Creates a new book entry in the library catalog after validating fields and staff authorization.
   ///
   /// Returns the newly created [Book] with its assigned document ID.
-  Future<Book> createBook(
-    Book book, {
-    bool enforceStaffRole = true,
-  }) async {
+  Future<Book> createBook(Book book, {bool enforceStaffRole = true}) async {
     // 1. Validate book fields and invariants
     book.validate();
 
@@ -156,10 +150,7 @@ class BookService {
   /// Updates an existing book in the catalog after verifying field invariants and staff authorization.
   ///
   /// Returns the updated [Book].
-  Future<Book> updateBook(
-    Book book, {
-    bool enforceStaffRole = true,
-  }) async {
+  Future<Book> updateBook(Book book, {bool enforceStaffRole = true}) async {
     if (book.id.trim().isEmpty) {
       throw ArgumentError('Book ID is required for update.');
     }
@@ -179,9 +170,7 @@ class BookService {
       throw Exception('Book with ID "${book.id}" does not exist in catalog.');
     }
 
-    final bookToSave = book.copyWith(
-      isAvailable: book.availableCopies > 0,
-    );
+    final bookToSave = book.copyWith(isAvailable: book.availableCopies > 0);
 
     // 4. Update in Firestore
     await docRef.set(bookToSave.toFirestore(), SetOptions(merge: true));
@@ -190,10 +179,7 @@ class BookService {
   }
 
   /// Deletes a book from the catalog by its [id] after verifying staff authorization.
-  Future<void> deleteBook(
-    String id, {
-    bool enforceStaffRole = true,
-  }) async {
+  Future<void> deleteBook(String id, {bool enforceStaffRole = true}) async {
     final bookId = id.trim();
     if (bookId.isEmpty) {
       throw ArgumentError('Book ID cannot be empty for deletion.');
