@@ -7,11 +7,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:librasync/models/book.dart';
+import 'package:librasync/models/book_copy.dart';
+import 'package:librasync/models/branch.dart';
 import 'package:librasync/models/loan_record.dart';
 import 'package:librasync/screens/catalog/book_catalog_screen.dart';
 import 'package:librasync/screens/catalog/book_details_screen.dart';
 import 'package:librasync/services/auth_service.dart';
+import 'package:librasync/services/book_copy_service.dart';
 import 'package:librasync/services/book_service.dart';
+import 'package:librasync/services/branch_service.dart';
 import 'package:librasync/services/circulation_service.dart';
 import 'package:librasync/widgets/catalog/book_form_dialog.dart';
 import 'package:librasync/widgets/catalog/delete_book_dialog.dart';
@@ -787,6 +791,72 @@ void main() {
         );
       },
     );
+  });
+
+  group('Public Catalogue & Branch/Copy Access Tests', () {
+    late FakeFirebaseFirestore fakeFirestore;
+    final sampleBranch = Branch(
+      id: 'branch-main',
+      name: 'Main Central Library',
+      address: '100 Library Way',
+      phone: '555-0100',
+    );
+    final sampleCopy = BookCopy(
+      id: 'copy-001',
+      bookId: testBook.id,
+      branchId: 'branch-main',
+      status: BookCopy.statusAvailable,
+      barcode: 'BC-TEST-01',
+      condition: 'New',
+    );
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      fakeFirestore.store.documents['branches/${sampleBranch.id}'] =
+          sampleBranch.toFirestore();
+      fakeFirestore.store.documents['bookCopies/${sampleCopy.id}'] = sampleCopy
+          .toFirestore();
+    });
+
+    test('Unauthenticated user can read branch catalogue details', () async {
+      final unauthBranchService = BranchService(
+        firestore: fakeFirestore,
+        auth: FakeFirebaseAuth(currentUser: null),
+      );
+
+      final branches = await unauthBranchService.getBranches();
+      expect(branches.length, 1);
+      expect(branches.first.id, 'branch-main');
+      expect(branches.first.name, 'Main Central Library');
+
+      final singleBranch = await unauthBranchService.getBranchById(
+        'branch-main',
+      );
+      expect(singleBranch, isNotNull);
+      expect(singleBranch!.name, 'Main Central Library');
+    });
+
+    test('Unauthenticated user can read physical book copies', () async {
+      final unauthCopyService = BookCopyService(
+        firestore: fakeFirestore,
+        auth: FakeFirebaseAuth(currentUser: null),
+      );
+
+      final copies = await unauthCopyService.getAllCopies();
+      expect(copies.length, 1);
+      expect(copies.first.id, 'copy-001');
+      expect(copies.first.barcode, 'BC-TEST-01');
+
+      final bookCopies = await unauthCopyService.getCopiesForBook(testBook.id);
+      expect(bookCopies.length, 1);
+      expect(bookCopies.first.bookId, testBook.id);
+
+      final branchCopies = await unauthCopyService.getCopiesForBranch(
+        'branch-main',
+      );
+      expect(branchCopies.length, 1);
+      expect(branchCopies.first.branchId, 'branch-main');
+    });
   });
 }
 
