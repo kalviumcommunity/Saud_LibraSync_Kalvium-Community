@@ -118,5 +118,14 @@ service cloud.firestore {
       // Only staff can delete or archive loan records
       allow delete: if isStaff();
     }
+
+    // ── Branches Collection (/branches/{branchId}) ────────────────────
+    match /branches/{branchId} {
+      // Branch catalog details are readable by all users / public
+      allow read: if true;
+
+      // Only authorized staff can create, update, or delete branches
+      allow write: if isStaff();
+    }
   }
 }
