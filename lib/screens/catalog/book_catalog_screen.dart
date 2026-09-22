@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../services/book_service.dart';
 import '../../widgets/book_card.dart';
+import '../../widgets/catalog/book_form_dialog.dart';
 import 'book_details_screen.dart';
 
 /// Screen displaying the library's Book Catalog with real-time Firestore updates,
-/// responsive grid/list layout, search by title and author, and comprehensive state handling.
+/// responsive grid/list layout, search by title and author, staff book addition, and comprehensive state handling.
 class BookCatalogScreen extends StatefulWidget {
   const BookCatalogScreen({
     super.key,
     this.bookService,
     this.booksStream,
+    this.isStaff,
   });
 
   /// Optional custom book service instance.
@@ -19,6 +21,9 @@ class BookCatalogScreen extends StatefulWidget {
 
   /// Optional custom stream of books (useful for testing or customized queries).
   final Stream<List<Book>>? booksStream;
+
+  /// Optional staff status override (useful for testing or direct permission pass-through).
+  final bool? isStaff;
 
   @override
   State<BookCatalogScreen> createState() => _BookCatalogScreenState();
@@ -30,12 +35,26 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
   Key _streamKey = UniqueKey();
+  bool _isStaff = false;
 
   @override
   void initState() {
     super.initState();
     _initStream();
+    _checkStaffStatus();
     _searchController.addListener(_onSearchChanged);
+  }
+
+  Future<void> _checkStaffStatus() async {
+    if (widget.isStaff != null) {
+      if (mounted) setState(() => _isStaff = widget.isStaff!);
+      return;
+    }
+    final service = widget.bookService ?? BookService();
+    final staff = await service.isCurrentUserStaff();
+    if (mounted) {
+      setState(() => _isStaff = staff);
+    }
   }
 
   void _initStream() {
@@ -77,6 +96,25 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
     });
   }
 
+  Future<void> _openAddBookDialog() async {
+    final createdBook = await BookFormDialog.show(
+      context,
+      bookService: widget.bookService,
+    );
+
+    if (createdBook != null && mounted) {
+      _retryStream();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '"${createdBook.title}" added to catalog successfully.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   List<Book> _filterBooks(List<Book> books) {
     if (_searchQuery.isEmpty) return books;
     final lowerQuery = _searchQuery.toLowerCase();
@@ -96,6 +134,13 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
       appBar: AppBar(
         title: const Text('Book Catalog'),
         actions: [
+          if (_isStaff)
+            IconButton(
+              key: const Key('catalog_add_book_btn'),
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add Book',
+              onPressed: _openAddBookDialog,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             tooltip: 'Refresh',
@@ -103,6 +148,14 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
           ),
         ],
       ),
+      floatingActionButton: _isStaff
+          ? FloatingActionButton.extended(
+              key: const Key('catalog_add_book_fab'),
+              onPressed: _openAddBookDialog,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Book'),
+            )
+          : null,
       body: SafeArea(
         child: Column(
           children: [
@@ -133,7 +186,10 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
 
                   // ── Empty Catalog State (no books in Firestore) ───────
                   if (allBooks.isEmpty) {
-                    return const _CatalogEmptyView();
+                    return _CatalogEmptyView(
+                      isStaff: _isStaff,
+                      onAddBook: _openAddBookDialog,
+                    );
                   }
 
                   // Filter books based on search query
@@ -152,12 +208,20 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                     books: filteredBooks,
                     totalCount: allBooks.length,
                     isFiltered: _searchQuery.isNotEmpty,
-                    onBookTap: (book) {
-                      Navigator.of(context).push(
+                    onBookTap: (book) async {
+                      final result = await Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (context) => BookDetailsScreen(book: book),
+                          builder: (context) => BookDetailsScreen(
+                            book: book,
+                            bookService: widget.bookService,
+                            isStaff: _isStaff,
+                          ),
                         ),
                       );
+
+                      if (result == true && mounted) {
+                        _retryStream();
+                      }
                     },
                   );
                 },
@@ -270,17 +334,14 @@ class _CatalogGridView extends StatelessWidget {
                       crossAxisSpacing: 12,
                       mainAxisExtent: 168,
                     ),
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final book = books[index];
-                        return BookCard(
-                          key: Key('book_card_${book.id}'),
-                          book: book,
-                          onTap: () => onBookTap(book),
-                        );
-                      },
-                      childCount: books.length,
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final book = books[index];
+                      return BookCard(
+                        key: Key('book_card_${book.id}'),
+                        book: book,
+                        onTap: () => onBookTap(book),
+                      );
+                    }, childCount: books.length),
                   ),
                 ),
               ],
@@ -310,9 +371,8 @@ class _CatalogLoadingView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Loading catalog...',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -322,10 +382,7 @@ class _CatalogLoadingView extends StatelessWidget {
 
 /// View displayed when an error occurs while fetching books.
 class _CatalogErrorView extends StatelessWidget {
-  const _CatalogErrorView({
-    required this.error,
-    required this.onRetry,
-  });
+  const _CatalogErrorView({required this.error, required this.onRetry});
 
   final String error;
   final VoidCallback onRetry;
@@ -379,7 +436,10 @@ class _CatalogErrorView extends StatelessWidget {
 
 /// View displayed when no books exist in the entire library.
 class _CatalogEmptyView extends StatelessWidget {
-  const _CatalogEmptyView();
+  const _CatalogEmptyView({this.isStaff = false, this.onAddBook});
+
+  final bool isStaff;
+  final VoidCallback? onAddBook;
 
   @override
   Widget build(BuildContext context) {
@@ -412,6 +472,15 @@ class _CatalogEmptyView extends StatelessWidget {
                 color: colorScheme.onSurfaceVariant,
               ),
             ),
+            if (isStaff && onAddBook != null) ...[
+              const SizedBox(height: 24),
+              FilledButton.icon(
+                key: const Key('catalog_empty_add_book_btn'),
+                onPressed: onAddBook,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Add First Book'),
+              ),
+            ],
           ],
         ),
       ),
@@ -421,10 +490,7 @@ class _CatalogEmptyView extends StatelessWidget {
 
 /// View displayed when search query yields 0 results.
 class _NoSearchResultsView extends StatelessWidget {
-  const _NoSearchResultsView({
-    required this.query,
-    required this.onClear,
-  });
+  const _NoSearchResultsView({required this.query, required this.onClear});
 
   final String query;
   final VoidCallback onClear;
