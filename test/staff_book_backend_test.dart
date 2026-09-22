@@ -84,7 +84,10 @@ void main() {
     });
 
     test('Throws ArgumentError when totalCopies is less than 1', () {
-      final zeroTotal = validStaffBook.copyWith(totalCopies: 0, availableCopies: 0);
+      final zeroTotal = validStaffBook.copyWith(
+        totalCopies: 0,
+        availableCopies: 0,
+      );
       expect(
         () => zeroTotal.validate(),
         throwsA(
@@ -217,53 +220,62 @@ void main() {
       };
     });
 
-    test('Unauthenticated user is rejected when attempting createBook', () async {
-      final fakeAuth = FakeFirebaseAuth(currentUser: null);
-      final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
+    test(
+      'Unauthenticated user is rejected when attempting createBook',
+      () async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: null);
+        final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
 
-      expect(
-        () => service.createBook(validStaffBook),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('Authentication required'),
+        expect(
+          () => service.createBook(validStaffBook),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Authentication required'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('Unauthenticated user is rejected when attempting updateBook', () async {
-      final fakeAuth = FakeFirebaseAuth(currentUser: null);
-      final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
+    test(
+      'Unauthenticated user is rejected when attempting updateBook',
+      () async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: null);
+        final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
 
-      expect(
-        () => service.updateBook(validStaffBook),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('Authentication required'),
+        expect(
+          () => service.updateBook(validStaffBook),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Authentication required'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
-    test('Unauthenticated user is rejected when attempting deleteBook', () async {
-      final fakeAuth = FakeFirebaseAuth(currentUser: null);
-      final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
+    test(
+      'Unauthenticated user is rejected when attempting deleteBook',
+      () async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: null);
+        final service = BookService(firestore: fakeFirestore, auth: fakeAuth);
 
-      expect(
-        () => service.deleteBook(validStaffBook.id),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('Authentication required'),
+        expect(
+          () => service.deleteBook(validStaffBook.id),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('Authentication required'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('Member without staff role is rejected on createBook', () async {
       final fakeAuth = FakeFirebaseAuth(currentUser: memberUser);
@@ -275,7 +287,9 @@ void main() {
           isA<Exception>().having(
             (e) => e.toString(),
             'message',
-            contains('Unauthorized access. Only library staff can manage the book catalog'),
+            contains(
+              'Unauthorized access. Only library staff can manage the book catalog',
+            ),
           ),
         ),
       );
@@ -377,22 +391,31 @@ void main() {
       final created = await bookService.createBook(validStaffBook);
 
       expect(created.id, validStaffBook.id);
-      expect(fakeFirestore.store.documents['books/${validStaffBook.id}'], isNotNull);
-    });
-
-    test('Invalid copy counts on createBook fail validation before writing', () async {
-      final invalidBook = validStaffBook.copyWith(
-        totalCopies: 2,
-        availableCopies: 5,
-      );
-
       expect(
-        () => bookService.createBook(invalidBook),
-        throwsA(isA<ArgumentError>()),
+        fakeFirestore.store.documents['books/${validStaffBook.id}'],
+        isNotNull,
       );
-
-      expect(fakeFirestore.store.documents['books/${invalidBook.id}'], isNull);
     });
+
+    test(
+      'Invalid copy counts on createBook fail validation before writing',
+      () async {
+        final invalidBook = validStaffBook.copyWith(
+          totalCopies: 2,
+          availableCopies: 5,
+        );
+
+        expect(
+          () => bookService.createBook(invalidBook),
+          throwsA(isA<ArgumentError>()),
+        );
+
+        expect(
+          fakeFirestore.store.documents['books/${invalidBook.id}'],
+          isNull,
+        );
+      },
+    );
 
     test('Staff successfully updates an existing book in catalog', () async {
       // Seed existing book
@@ -444,7 +467,10 @@ void main() {
 
       await bookService.deleteBook(validStaffBook.id);
 
-      expect(fakeFirestore.store.documents['books/${validStaffBook.id}'], isNull);
+      expect(
+        fakeFirestore.store.documents['books/${validStaffBook.id}'],
+        isNull,
+      );
     });
 
     test('Deleting non-existent book throws Exception', () async {
@@ -471,7 +497,10 @@ void main() {
       fakeFirestore = FakeFirebaseFirestore();
       memberAuth = FakeFirebaseAuth(currentUser: memberUser);
       bookService = BookService(firestore: fakeFirestore, auth: memberAuth);
-      circulationService = CirculationService(firestore: fakeFirestore, auth: memberAuth);
+      circulationService = CirculationService(
+        firestore: fakeFirestore,
+        auth: memberAuth,
+      );
 
       // Seed catalog with books
       fakeFirestore.store.documents['books/${validStaffBook.id}'] =
@@ -491,43 +520,46 @@ void main() {
       expect(nonExistent, isNull);
     });
 
-    test('Circulation borrow and return operations remain 100% intact', () async {
-      // 1. Member borrows book
-      await circulationService.requestBorrow(
-        book: validStaffBook,
-        memberId: memberUser.uid,
-        memberName: memberUser.displayName,
-      );
+    test(
+      'Circulation borrow and return operations remain 100% intact',
+      () async {
+        // 1. Member borrows book
+        await circulationService.requestBorrow(
+          book: validStaffBook,
+          memberId: memberUser.uid,
+          memberName: memberUser.displayName,
+        );
 
-      // Verify book available copies decremented from 5 to 4
-      final bookAfterBorrow =
-          fakeFirestore.store.documents['books/${validStaffBook.id}'];
-      expect(bookAfterBorrow!['availableCopies'], 4);
-      expect(bookAfterBorrow['isAvailable'], isTrue);
+        // Verify book available copies decremented from 5 to 4
+        final bookAfterBorrow =
+            fakeFirestore.store.documents['books/${validStaffBook.id}'];
+        expect(bookAfterBorrow!['availableCopies'], 4);
+        expect(bookAfterBorrow['isAvailable'], isTrue);
 
-      // Find created loan record
-      final loanEntry = fakeFirestore.store.documents.entries.firstWhere(
-        (e) => e.key.startsWith('loans/'),
-      );
-      final loanId = loanEntry.key.replaceFirst('loans/', '');
-      expect(loanEntry.value['bookId'], validStaffBook.id);
-      expect(loanEntry.value['memberId'], memberUser.uid);
-      expect(loanEntry.value['status'], 'active');
+        // Find created loan record
+        final loanEntry = fakeFirestore.store.documents.entries.firstWhere(
+          (e) => e.key.startsWith('loans/'),
+        );
+        final loanId = loanEntry.key.replaceFirst('loans/', '');
+        expect(loanEntry.value['bookId'], validStaffBook.id);
+        expect(loanEntry.value['memberId'], memberUser.uid);
+        expect(loanEntry.value['status'], 'active');
 
-      // 2. Member returns book
-      await circulationService.requestReturn(loanId: loanId);
+        // 2. Member returns book
+        await circulationService.requestReturn(loanId: loanId);
 
-      // Verify loan is marked returned
-      final loanAfterReturn = fakeFirestore.store.documents['loans/$loanId'];
-      expect(loanAfterReturn!['status'], 'returned');
-      expect(loanAfterReturn['returnDate'], isNotNull);
+        // Verify loan is marked returned
+        final loanAfterReturn = fakeFirestore.store.documents['loans/$loanId'];
+        expect(loanAfterReturn!['status'], 'returned');
+        expect(loanAfterReturn['returnDate'], isNotNull);
 
-      // Verify copies restored back to 5
-      final bookAfterReturn =
-          fakeFirestore.store.documents['books/${validStaffBook.id}'];
-      expect(bookAfterReturn!['availableCopies'], 5);
-      expect(bookAfterReturn['isAvailable'], isTrue);
-    });
+        // Verify copies restored back to 5
+        final bookAfterReturn =
+            fakeFirestore.store.documents['books/${validStaffBook.id}'];
+        expect(bookAfterReturn!['availableCopies'], 5);
+        expect(bookAfterReturn['isAvailable'], isTrue);
+      },
+    );
   });
 }
 
@@ -644,7 +676,10 @@ class FakeDocumentReference<T extends Object?> extends Fake
   }
 
   @override
-  Stream<DocumentSnapshot<T>> snapshots({bool includeMetadataChanges = false}) {
+  Stream<DocumentSnapshot<T>> snapshots({
+    bool includeMetadataChanges = false,
+    ListenSource source = ListenSource.defaultSource,
+  }) {
     final data = _store.documents[_path];
     return Stream.value(FakeDocumentSnapshot<T>(id, data as T?));
   }
@@ -729,7 +764,10 @@ class FakeCollectionReference<T extends Object?> extends Fake
     Iterable<Object?>? whereNotIn,
     bool? isNull,
   }) {
-    return FakeQuery<T>(_collectionPath, _store).where(field, isEqualTo: isEqualTo);
+    return FakeQuery<T>(
+      _collectionPath,
+      _store,
+    ).where(field, isEqualTo: isEqualTo);
   }
 
   @override
@@ -768,7 +806,8 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Future<DocumentSnapshot<T>> get<T extends Object?>(
-      DocumentReference<T> documentSnapshot) async {
+    DocumentReference<T> documentSnapshot,
+  ) async {
     if (_hasWritten) {
       throw StateError(
         'FirestoreException: Reads must occur before any writes in a transaction.',
@@ -781,11 +820,14 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Transaction update(
-      DocumentReference<Object?> documentSnapshot, Map<Object, Object?> data) {
+    DocumentReference<Object?> documentSnapshot,
+    Map<Object, Object?> data,
+  ) {
     _hasWritten = true;
     final ref = documentSnapshot as FakeDocumentReference;
-    final existing =
-        Map<String, dynamic>.from(_store.documents[ref._path] ?? {});
+    final existing = Map<String, dynamic>.from(
+      _store.documents[ref._path] ?? {},
+    );
     data.forEach((k, v) => existing[k.toString()] = v);
     _store.documents[ref._path] = existing;
     return this;
@@ -793,8 +835,10 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Transaction set<T extends Object?>(
-      DocumentReference<T> documentSnapshot, T data,
-      [SetOptions? options]) {
+    DocumentReference<T> documentSnapshot,
+    T data, [
+    SetOptions? options,
+  ]) {
     _hasWritten = true;
     final ref = documentSnapshot as FakeDocumentReference<T>;
     if (data is Map<String, dynamic>) {
@@ -817,9 +861,11 @@ class FakeFirebaseFirestore extends Fake implements FirebaseFirestore {
   }
 
   @override
-  Future<T> runTransaction<T>(TransactionHandler<T> transactionHandler,
-      {Duration timeout = const Duration(seconds: 30),
-      int maxAttempts = 5}) async {
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
     final transaction = FakeTransaction(store);
     return await transactionHandler(transaction);
   }
