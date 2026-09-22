@@ -40,7 +40,7 @@ class BookService {
 
       final doc = await _usersCollection.doc(currentUser.uid).get();
       if (doc.exists && doc.data() != null) {
-        final role = doc.data()!['role'] as String?;
+        final role = (doc.data()!['role'] as String?)?.trim().toLowerCase();
         if (role == 'staff' || role == 'admin') {
           return true;
         }
