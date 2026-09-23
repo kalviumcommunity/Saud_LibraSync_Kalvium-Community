@@ -3,9 +3,12 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:librasync/models/book.dart';
 import 'package:librasync/models/book_copy.dart';
 import 'package:librasync/services/book_copy_service.dart';
+import 'package:librasync/services/circulation_service.dart';
 
 void main() {
   final sampleCopy1 = BookCopy(
@@ -77,6 +80,20 @@ void main() {
             (e) => e.message,
             'message',
             contains('Status cannot be empty'),
+          ),
+        ),
+      );
+    });
+
+    test('Throws ArgumentError when status is invalid', () {
+      final invalidStatus = sampleCopy1.copyWith(status: 'damaged');
+      expect(
+        () => invalidStatus.validate(),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Invalid copy status'),
           ),
         ),
       );
@@ -307,6 +324,242 @@ void main() {
       expect(blankEmitted, isNull);
     });
 
+    test('getAvailableCopiesForBook filters out unavailable copies', () async {
+      fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+          sampleCopy1.toFirestore(); // book-001, branch-central, available
+      fakeFirestore.store.documents['bookCopies/${sampleCopy2.id}'] =
+          sampleCopy2.toFirestore(); // book-001, branch-north, borrowed
+      fakeFirestore.store.documents['bookCopies/${sampleCopy3.id}'] =
+          sampleCopy3.toFirestore(); // book-002, branch-central, available
+
+      final availableBook1 = await copyService.getAvailableCopiesForBook(
+        'book-001',
+      );
+      expect(availableBook1.length, 1);
+      expect(availableBook1.first.id, 'copy-101');
+      expect(availableBook1.first.isAvailable, isTrue);
+
+      final blankBook = await copyService.getAvailableCopiesForBook('  ');
+      expect(blankBook, isEmpty);
+    });
+
+    test(
+      'getAvailableCopiesForBook with branchId filters by both book and branch',
+      () async {
+        final centralCopy2 = sampleCopy1.copyWith(
+          id: 'copy-103',
+          branchId: 'branch-central',
+          status: BookCopy.statusAvailable,
+        );
+        final northCopyAvail = sampleCopy1.copyWith(
+          id: 'copy-104',
+          branchId: 'branch-north',
+          status: BookCopy.statusAvailable,
+        );
+
+        fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+            sampleCopy1.toFirestore();
+        fakeFirestore.store.documents['bookCopies/${centralCopy2.id}'] =
+            centralCopy2.toFirestore();
+        fakeFirestore.store.documents['bookCopies/${northCopyAvail.id}'] =
+            northCopyAvail.toFirestore();
+
+        final centralCopies = await copyService.getAvailableCopiesForBook(
+          'book-001',
+          branchId: 'branch-central',
+        );
+        expect(centralCopies.length, 2);
+        expect(
+          centralCopies.map((c) => c.id),
+          containsAll(['copy-101', 'copy-103']),
+        );
+
+        final northCopies = await copyService.getAvailableCopiesForBook(
+          'book-001',
+          branchId: 'branch-north',
+        );
+        expect(northCopies.length, 1);
+        expect(northCopies.first.id, 'copy-104');
+      },
+    );
+
+    test(
+      'streamAvailableCopiesForBook streams only available copies for a book',
+      () async {
+        fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+            sampleCopy1.toFirestore(); // available
+        fakeFirestore.store.documents['bookCopies/${sampleCopy2.id}'] =
+            sampleCopy2.toFirestore(); // borrowed
+
+        final stream = copyService.streamAvailableCopiesForBook('book-001');
+        final emitted = await stream.first;
+
+        expect(emitted.length, 1);
+        expect(emitted.first.id, 'copy-101');
+        expect(emitted.first.isAvailable, isTrue);
+
+        final blankStream = copyService.streamAvailableCopiesForBook('  ');
+        expect(await blankStream.first, isEmpty);
+      },
+    );
+
+    test('streamAvailableCopiesForBook with branchId streams available copies at branch', () async {
+      fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+          sampleCopy1.toFirestore(); // central, available
+
+      final stream = copyService.streamAvailableCopiesForBook(
+        'book-001',
+        branchId: 'branch-central',
+      );
+      final emitted = await stream.first;
+
+      expect(emitted.length, 1);
+      expect(emitted.first.id, 'copy-101');
+
+      final emptyBranchStream = copyService.streamAvailableCopiesForBook(
+        'book-001',
+        branchId: 'branch-west',
+      );
+      expect(await emptyBranchStream.first, isEmpty);
+    });
+
+    test(
+      'getAvailableCopiesForBranch returns all available copies at branch',
+      () async {
+        fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+            sampleCopy1.toFirestore(); // book-001, central, available
+        fakeFirestore.store.documents['bookCopies/${sampleCopy2.id}'] =
+            sampleCopy2.toFirestore(); // book-001, north, borrowed
+        fakeFirestore.store.documents['bookCopies/${sampleCopy3.id}'] =
+            sampleCopy3.toFirestore(); // book-002, central, available
+
+        final centralAvailable = await copyService.getAvailableCopiesForBranch(
+          'branch-central',
+        );
+        expect(centralAvailable.length, 2);
+        expect(
+          centralAvailable.map((c) => c.id),
+          containsAll(['copy-101', 'copy-201']),
+        );
+
+        final northAvailable = await copyService.getAvailableCopiesForBranch(
+          'branch-north',
+        );
+        expect(northAvailable, isEmpty);
+
+        expect(await copyService.getAvailableCopiesForBranch('  '), isEmpty);
+      },
+    );
+
+    test('streamAvailableCopiesForBranch streams real-time available copies at branch', () async {
+      fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+          sampleCopy1.toFirestore();
+
+      final stream = copyService.streamAvailableCopiesForBranch(
+        'branch-central',
+      );
+      final emitted = await stream.first;
+
+      expect(emitted.length, 1);
+      expect(emitted.first.id, 'copy-101');
+
+      final blankStream = copyService.streamAvailableCopiesForBranch(' ');
+      expect(await blankStream.first, isEmpty);
+    });
+
+    test(
+      'getCopiesForBookAndBranch returns all copies regardless of status',
+      () async {
+        final copyBorrowed = sampleCopy1.copyWith(
+          id: 'copy-105',
+          status: BookCopy.statusBorrowed,
+        );
+        fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+            sampleCopy1.toFirestore(); // central, available
+        fakeFirestore.store.documents['bookCopies/${copyBorrowed.id}'] =
+            copyBorrowed.toFirestore(); // central, borrowed
+
+        final copies = await copyService.getCopiesForBookAndBranch(
+          'book-001',
+          'branch-central',
+        );
+        expect(copies.length, 2);
+        expect(copies.map((c) => c.id), containsAll(['copy-101', 'copy-105']));
+
+        expect(
+          await copyService.getCopiesForBookAndBranch('', 'branch-central'),
+          isEmpty,
+        );
+        expect(
+          await copyService.getCopiesForBookAndBranch('book-001', ''),
+          isEmpty,
+        );
+      },
+    );
+
+    test(
+      'streamCopiesForBookAndBranch streams copies for book and branch',
+      () async {
+        fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+            sampleCopy1.toFirestore();
+
+        final stream = copyService.streamCopiesForBookAndBranch(
+          'book-001',
+          'branch-central',
+        );
+        final emitted = await stream.first;
+
+        expect(emitted.length, 1);
+        expect(emitted.first.id, 'copy-101');
+
+        final emptyStream = copyService.streamCopiesForBookAndBranch(' ', ' ');
+        expect(await emptyStream.first, isEmpty);
+      },
+    );
+
+    test('getAvailableCopyCountForBook returns correct count', () async {
+      final centralCopy2 = sampleCopy1.copyWith(
+        id: 'copy-106',
+        branchId: 'branch-central',
+        status: BookCopy.statusAvailable,
+      );
+      final northCopy2 = sampleCopy1.copyWith(
+        id: 'copy-107',
+        branchId: 'branch-north',
+        status: BookCopy.statusAvailable,
+      );
+      final borrowedCopy = sampleCopy1.copyWith(
+        id: 'copy-108',
+        status: BookCopy.statusBorrowed,
+      );
+
+      fakeFirestore.store.documents['bookCopies/${sampleCopy1.id}'] =
+          sampleCopy1.toFirestore();
+      fakeFirestore.store.documents['bookCopies/${centralCopy2.id}'] =
+          centralCopy2.toFirestore();
+      fakeFirestore.store.documents['bookCopies/${northCopy2.id}'] = northCopy2
+          .toFirestore();
+      fakeFirestore.store.documents['bookCopies/${borrowedCopy.id}'] =
+          borrowedCopy.toFirestore();
+
+      final totalAvail = await copyService.getAvailableCopyCountForBook(
+        'book-001',
+      );
+      expect(totalAvail, 3);
+
+      final centralAvail = await copyService.getAvailableCopyCountForBook(
+        'book-001',
+        branchId: 'branch-central',
+      );
+      expect(centralAvail, 2);
+
+      final northAvail = await copyService.getAvailableCopyCountForBook(
+        'book-001',
+        branchId: 'branch-north',
+      );
+      expect(northAvail, 1);
+    });
+
     test('Handles Firestore errors gracefully in stream methods', () async {
       final errorFirestore = ErrorFirebaseFirestore();
       final errorService = BookCopyService(firestore: errorFirestore);
@@ -322,6 +575,18 @@ void main() {
       );
       expect(
         errorService.streamCopyById('copy-101'),
+        emitsError(isA<FirebaseException>()),
+      );
+      expect(
+        errorService.streamAvailableCopiesForBook('book-001'),
+        emitsError(isA<FirebaseException>()),
+      );
+      expect(
+        errorService.streamAvailableCopiesForBranch('branch-central'),
+        emitsError(isA<FirebaseException>()),
+      );
+      expect(
+        errorService.streamCopiesForBookAndBranch('book-001', 'branch-central'),
         emitsError(isA<FirebaseException>()),
       );
     });
@@ -346,11 +611,149 @@ void main() {
         () => errorService.getCopyById('copy-101'),
         throwsA(isA<FirebaseException>()),
       );
+      expect(
+        () => errorService.getAvailableCopiesForBook('book-001'),
+        throwsA(isA<FirebaseException>()),
+      );
+      expect(
+        () => errorService.getAvailableCopiesForBranch('branch-central'),
+        throwsA(isA<FirebaseException>()),
+      );
+      expect(
+        () => errorService.getCopiesForBookAndBranch(
+          'book-001',
+          'branch-central',
+        ),
+        throwsA(isA<FirebaseException>()),
+      );
     });
+
+    test(
+      'Circulation borrow and return operations remain intact and unaffected',
+      () async {
+        final memberUser = FakeUser(
+          uid: 'user-001',
+          email: 'member@test.com',
+          displayName: 'Test Member',
+        );
+        final memberAuth = FakeFirebaseAuth(currentUser: memberUser);
+        final circulationService = CirculationService(
+          firestore: fakeFirestore,
+          auth: memberAuth,
+        );
+
+        final testBook = Book(
+          id: 'book-circ-001',
+          title: 'Refactoring',
+          author: 'Martin Fowler',
+          description: 'Improving the Design of Existing Code',
+          totalCopies: 3,
+          availableCopies: 3,
+          isAvailable: true,
+        );
+
+        fakeFirestore.store.documents['books/${testBook.id}'] = testBook
+            .toFirestore();
+
+        // Member borrows book
+        await circulationService.requestBorrow(
+          book: testBook,
+          memberId: memberUser.uid,
+        );
+
+        final bookAfterBorrow =
+            fakeFirestore.store.documents['books/${testBook.id}'];
+        expect(bookAfterBorrow!['availableCopies'], 2);
+        expect(bookAfterBorrow['isAvailable'], isTrue);
+
+        final loanEntry = fakeFirestore.store.documents.entries.firstWhere(
+          (e) => e.key.startsWith('loans/'),
+        );
+        final loanId = loanEntry.key.replaceFirst('loans/', '');
+
+        // Member returns book
+        await circulationService.requestReturn(loanId: loanId);
+
+        final bookAfterReturn =
+            fakeFirestore.store.documents['books/${testBook.id}'];
+        expect(bookAfterReturn!['availableCopies'], 3);
+        expect(bookAfterReturn['isAvailable'], isTrue);
+      },
+    );
   });
 }
 
 // ── Fake Test Doubles ────────────────────────────────────────────────────────
+
+class FakeUser extends Fake implements User {
+  FakeUser({required this.uid, this.email, this.displayName});
+
+  @override
+  final String uid;
+
+  @override
+  final String? email;
+
+  @override
+  final String? displayName;
+}
+
+class FakeFirebaseAuth extends Fake implements FirebaseAuth {
+  FakeFirebaseAuth({this.currentUser});
+
+  @override
+  final User? currentUser;
+}
+
+class FakeTransaction extends Fake implements Transaction {
+  FakeTransaction(this._store);
+
+  final FakeFirestoreData _store;
+  bool _hasWritten = false;
+
+  @override
+  Future<DocumentSnapshot<T>> get<T extends Object?>(
+    DocumentReference<T> documentSnapshot,
+  ) async {
+    if (_hasWritten) {
+      throw StateError(
+        'FirestoreException: Reads must occur before any writes in a transaction.',
+      );
+    }
+    final ref = documentSnapshot as FakeDocumentReference<T>;
+    final data = _store.documents[ref._path];
+    return FakeDocumentSnapshot<T>(ref.id, data as T?);
+  }
+
+  @override
+  Transaction update(
+    DocumentReference<Object?> documentSnapshot,
+    Map<Object, Object?> data,
+  ) {
+    _hasWritten = true;
+    final ref = documentSnapshot as FakeDocumentReference;
+    final existing = Map<String, dynamic>.from(
+      _store.documents[ref._path] ?? {},
+    );
+    data.forEach((k, v) => existing[k.toString()] = v);
+    _store.documents[ref._path] = existing;
+    return this;
+  }
+
+  @override
+  Transaction set<T extends Object?>(
+    DocumentReference<T> documentSnapshot,
+    T data, [
+    SetOptions? options,
+  ]) {
+    _hasWritten = true;
+    final ref = documentSnapshot as FakeDocumentReference<T>;
+    if (data is Map<String, dynamic>) {
+      _store.documents[ref._path] = Map<String, dynamic>.from(data);
+    }
+    return this;
+  }
+}
 
 class FakeDocumentSnapshot<T extends Object?> extends Fake
     implements DocumentSnapshot<T> {
@@ -571,6 +974,16 @@ class FakeFirebaseFirestore extends Fake implements FirebaseFirestore {
   @override
   CollectionReference<Map<String, dynamic>> collection(String collectionPath) {
     return FakeCollectionReference<Map<String, dynamic>>(collectionPath, store);
+  }
+
+  @override
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
+    final transaction = FakeTransaction(store);
+    return await transactionHandler(transaction);
   }
 }
 
