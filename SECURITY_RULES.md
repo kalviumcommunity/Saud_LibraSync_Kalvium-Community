@@ -27,9 +27,9 @@ LibraSync utilizes role-based access control (RBAC) enforced both at the applica
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Users** | `/users/{userId}` | Authenticated users | Owner (`role == 'member'`) or Staff | Staff, or Owner modifying non-role fields | Staff only |
 | **Books** | `/books/{bookId}` | Public (`true`) | Staff (with field validation) | Staff (all fields), or Authenticated members (atomic copy count decrement/increment only) | Staff only |
-| **Loans** | `/loans/{loanId}` | Owner (`memberId == uid`) or Staff | Authenticated member (`status == 'active'`) for self, or Staff | Staff, or Owner returning own active loan (`status == 'returned'`) | Staff only |
+| **Loans** | `/loans/{loanId}` | Owner (`memberId == uid`) or Staff | Authenticated member (`status == 'active'`) for self, or Staff | Staff, or Owner returning own active loan (`status == 'returned'`, immutable `borrowedBranchId`/`bookCopyId`) | Staff only |
 | **Branches** | `/branches/{branchId}` | Public (`true`) | Staff only | Staff only | Staff only |
-| **Book Copies** | `/bookCopies/{copyId}` | Public (`true`) | Staff only | Staff only | Staff only |
+| **Book Copies** | `/bookCopies/{copyId}` | Public (`true`) | Staff only | Staff (all fields), or Authenticated members (status to available/borrowed and branchId update during return) | Staff only |
 
 ---
 
@@ -37,7 +37,8 @@ LibraSync utilizes role-based access control (RBAC) enforced both at the applica
 
 1. **Self-Elevation Prevention**: Members cannot write `role: 'staff'` or `role: 'admin'` to their `/users/{userId}` document. Profile creation enforces `request.resource.data.role == 'member'` unless performed by staff. Profile updates reject changes where `request.resource.data.role != resource.data.role`.
 2. **Copy Invariant Invariants**: In `/books/{bookId}`, creation and updates validate that `totalCopies >= 1`, `0 <= availableCopies <= totalCopies`, and `isAvailable == (availableCopies > 0)`.
-3. **Loan Record Ownership**: In `/loans/{loanId}`, members cannot modify another member's loan record or transition records to states other than `'returned'` with a valid `returnDate`.
+3. **Loan Record Ownership & Branch Integrity**: In `/loans/{loanId}`, members cannot modify another member's loan record, alter `borrowedBranchId` or `bookCopyId`, or transition records to states other than `'returned'` with a valid `returnDate`.
+4. **Physical Copy Circulation Safety**: In `/bookCopies/{copyId}`, members cannot delete copies or fabricate inventory; status transitions are restricted to `'available'` and `'borrowed'` alongside valid branch routing during cross-branch returns.
 
 ---
 

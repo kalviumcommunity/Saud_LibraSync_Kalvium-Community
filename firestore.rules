@@ -105,11 +105,14 @@ service cloud.firestore {
 
       // Members can only update their own loan from 'active' to 'returned'.
       // Members CANNOT modify another user's loan. Staff can update any loan record.
+      // Original borrowedBranchId and bookCopyId are immutable once created.
       allow update: if isStaff() || (
         isAuthenticated() &&
         resource.data.memberId == request.auth.uid &&
         request.resource.data.memberId == resource.data.memberId &&
         request.resource.data.bookId == resource.data.bookId &&
+        (!('borrowedBranchId' in resource.data) || request.resource.data.borrowedBranchId == resource.data.borrowedBranchId) &&
+        (!('bookCopyId' in resource.data) || request.resource.data.bookCopyId == resource.data.bookCopyId) &&
         resource.data.status == 'active' &&
         request.resource.data.status == 'returned' &&
         request.resource.data.returnDate != null
@@ -133,8 +136,17 @@ service cloud.firestore {
       // Physical copy availability is readable by all users / public
       allow read: if true;
 
-      // Only authorized staff can create, update, or delete book copies
-      allow write: if isStaff();
+      // Only authorized staff can create or delete book copies
+      allow create, delete: if isStaff();
+
+      // Staff can update all book copy fields.
+      // Authenticated members are restricted to updating status (available/borrowed) and branch location during circulation transactions.
+      allow update: if isStaff() || (
+        isAuthenticated() &&
+        request.resource.data.bookId == resource.data.bookId &&
+        request.resource.data.status in ['available', 'borrowed'] &&
+        (request.resource.data.branchId is string && request.resource.data.branchId.size() > 0)
+      );
     }
   }
 }

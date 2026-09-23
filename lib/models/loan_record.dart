@@ -14,6 +14,9 @@ class LoanRecord {
     this.memberId,
     this.memberName,
     this.status = 'active',
+    this.borrowedBranchId,
+    this.returnBranchId,
+    this.bookCopyId,
   });
 
   /// Unique loan record identifier.
@@ -49,9 +52,17 @@ class LoanRecord {
   /// Current loan status (e.g. 'active', 'returned', 'overdue').
   final String status;
 
+  /// Identifier of the library branch where the book was originally borrowed.
+  final String? borrowedBranchId;
+
+  /// Identifier of the library branch where the book was returned (supports cross-branch returns).
+  final String? returnBranchId;
+
+  /// Identifier of the specific physical book copy borrowed, if assigned.
+  final String? bookCopyId;
+
   /// Whether the loan is currently overdue.
-  bool get isOverdue =>
-      returnDate == null && DateTime.now().isAfter(dueDate);
+  bool get isOverdue => returnDate == null && DateTime.now().isAfter(dueDate);
 
   /// Number of days remaining until the due date (negative if past due).
   int get daysUntilDue => dueDate.difference(DateTime.now()).inDays;
@@ -85,6 +96,10 @@ class LoanRecord {
       memberId: data['memberId'] as String?,
       memberName: data['memberName'] as String?,
       status: data['status'] as String? ?? 'active',
+      borrowedBranchId:
+          data['borrowedBranchId'] as String? ?? data['branchId'] as String?,
+      returnBranchId: data['returnBranchId'] as String?,
+      bookCopyId: data['bookCopyId'] as String? ?? data['copyId'] as String?,
     );
   }
 
@@ -101,6 +116,12 @@ class LoanRecord {
       if (memberId != null) 'memberId': memberId,
       if (memberName != null) 'memberName': memberName,
       'status': status,
+      if (borrowedBranchId != null && borrowedBranchId!.trim().isNotEmpty)
+        'borrowedBranchId': borrowedBranchId!.trim(),
+      if (returnBranchId != null && returnBranchId!.trim().isNotEmpty)
+        'returnBranchId': returnBranchId!.trim(),
+      if (bookCopyId != null && bookCopyId!.trim().isNotEmpty)
+        'bookCopyId': bookCopyId!.trim(),
     };
   }
 
@@ -117,6 +138,9 @@ class LoanRecord {
     String? memberId,
     String? memberName,
     String? status,
+    String? borrowedBranchId,
+    String? returnBranchId,
+    String? bookCopyId,
   }) {
     return LoanRecord(
       id: id ?? this.id,
@@ -130,6 +154,9 @@ class LoanRecord {
       memberId: memberId ?? this.memberId,
       memberName: memberName ?? this.memberName,
       status: status ?? this.status,
+      borrowedBranchId: borrowedBranchId ?? this.borrowedBranchId,
+      returnBranchId: returnBranchId ?? this.returnBranchId,
+      bookCopyId: bookCopyId ?? this.bookCopyId,
     );
   }
 
@@ -148,25 +175,31 @@ class LoanRecord {
           returnDate == other.returnDate &&
           memberId == other.memberId &&
           memberName == other.memberName &&
-          status == other.status;
+          status == other.status &&
+          borrowedBranchId == other.borrowedBranchId &&
+          returnBranchId == other.returnBranchId &&
+          bookCopyId == other.bookCopyId;
 
   @override
   int get hashCode => Object.hash(
-        id,
-        bookId,
-        bookTitle,
-        bookAuthor,
-        bookImageUrl,
-        borrowDate,
-        dueDate,
-        returnDate,
-        memberId,
-        memberName,
-        status,
-      );
+    id,
+    bookId,
+    bookTitle,
+    bookAuthor,
+    bookImageUrl,
+    borrowDate,
+    dueDate,
+    returnDate,
+    memberId,
+    memberName,
+    status,
+    borrowedBranchId,
+    returnBranchId,
+    bookCopyId,
+  );
 
   @override
   String toString() {
-    return 'LoanRecord(id: $id, bookTitle: $bookTitle, status: $status, dueDate: $dueDate)';
+    return 'LoanRecord(id: $id, bookTitle: $bookTitle, status: $status, borrowedBranch: $borrowedBranchId, returnBranch: $returnBranchId)';
   }
 }
