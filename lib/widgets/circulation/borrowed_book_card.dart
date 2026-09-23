@@ -21,8 +21,18 @@ class BorrowedBookCard extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -60,7 +70,8 @@ class BorrowedBookCard extends StatelessWidget {
                     width: 68,
                     height: 98,
                     color: colorScheme.primaryContainer.withAlpha(120),
-                    child: (loan.bookImageUrl != null &&
+                    child:
+                        (loan.bookImageUrl != null &&
                             loan.bookImageUrl!.trim().isNotEmpty)
                         ? Image.network(
                             loan.bookImageUrl!,
@@ -303,10 +314,10 @@ class _CoverPlaceholder extends StatelessWidget {
               Text(
                 title.isNotEmpty ? title : 'Book',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onPrimaryContainer,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,

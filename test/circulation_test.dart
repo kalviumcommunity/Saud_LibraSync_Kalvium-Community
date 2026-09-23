@@ -17,7 +17,6 @@ import 'package:librasync/widgets/circulation/borrow_confirmation_sheet.dart';
 import 'package:librasync/widgets/circulation/borrowed_book_card.dart';
 import 'package:librasync/widgets/circulation/return_confirmation_dialog.dart';
 
-
 void main() {
   final availableBook = Book(
     id: 'book-avail-1',
@@ -99,12 +98,11 @@ void main() {
   });
 
   group('BookDetailsScreen Borrow Action Tests', () {
-    testWidgets('Shows enabled Borrow Book button when copies are available',
-        (WidgetTester tester) async {
+    testWidgets('Shows enabled Borrow Book button when copies are available', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookDetailsScreen(book: availableBook),
-        ),
+        MaterialApp(home: BookDetailsScreen(book: availableBook)),
       );
 
       final borrowButton = find.byKey(const Key('book_details_borrow_btn'));
@@ -115,16 +113,16 @@ void main() {
       expect(buttonWidget.onPressed, isNotNull);
     });
 
-    testWidgets('Shows disabled state when book is unavailable',
-        (WidgetTester tester) async {
+    testWidgets('Shows disabled state when book is unavailable', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookDetailsScreen(book: unavailableBook),
-        ),
+        MaterialApp(home: BookDetailsScreen(book: unavailableBook)),
       );
 
-      final disabledButton =
-          find.byKey(const Key('book_details_borrow_btn_disabled'));
+      final disabledButton = find.byKey(
+        const Key('book_details_borrow_btn_disabled'),
+      );
       expect(disabledButton, findsOneWidget);
       expect(find.text('Currently Unavailable'), findsOneWidget);
 
@@ -132,12 +130,11 @@ void main() {
       expect(buttonWidget.onPressed, isNull);
     });
 
-    testWidgets('Tapping Borrow Book button opens BorrowConfirmationSheet',
-        (WidgetTester tester) async {
+    testWidgets('Tapping Borrow Book button opens BorrowConfirmationSheet', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookDetailsScreen(book: availableBook),
-        ),
+        MaterialApp(home: BookDetailsScreen(book: availableBook)),
       );
 
       await tester.tap(find.byKey(const Key('book_details_borrow_btn')));
@@ -152,53 +149,53 @@ void main() {
     });
 
     testWidgets(
-        'Completing borrow in BorrowConfirmationSheet pops screen with true',
-        (WidgetTester tester) async {
-      bool? poppedResult;
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Builder(
-            builder: (context) => ElevatedButton(
-              onPressed: () async {
-                poppedResult = await Navigator.of(context).push<bool>(
-                  MaterialPageRoute(
-                    builder: (context) => BookDetailsScreen(
-                      book: availableBook,
-                      onConfirmBorrow: () async {},
+      'Completing borrow in BorrowConfirmationSheet pops screen with true',
+      (WidgetTester tester) async {
+        bool? poppedResult;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Builder(
+              builder: (context) => ElevatedButton(
+                onPressed: () async {
+                  poppedResult = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (context) => BookDetailsScreen(
+                        book: availableBook,
+                        onConfirmBorrow: () async {},
+                      ),
                     ),
-                  ),
-                );
-              },
-              child: const Text('Open Details'),
+                  );
+                },
+                child: const Text('Open Details'),
+              ),
             ),
           ),
-        ),
-      );
+        );
 
-      await tester.tap(find.text('Open Details'));
-      await tester.pumpAndSettle();
+        await tester.tap(find.text('Open Details'));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('book_details_borrow_btn')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('book_details_borrow_btn')));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('borrow_confirm_btn')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('borrow_confirm_btn')));
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('borrow_success_done_btn')));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('borrow_success_done_btn')));
+        await tester.pumpAndSettle();
 
-      expect(poppedResult, isTrue);
-    });
+        expect(poppedResult, isTrue);
+      },
+    );
   });
 
   group('BorrowConfirmationSheet Widget Tests', () {
-    testWidgets('Renders all terms, due date, and cancel action',
-        (WidgetTester tester) async {
+    testWidgets('Renders all terms, due date, and cancel action', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: BorrowConfirmationSheet(book: availableBook),
-          ),
+          home: Scaffold(body: BorrowConfirmationSheet(book: availableBook)),
         ),
       );
 
@@ -209,8 +206,9 @@ void main() {
       expect(find.byKey(const Key('borrow_cancel_btn')), findsOneWidget);
     });
 
-    testWidgets('Handles loading and success state on confirm borrow',
-        (WidgetTester tester) async {
+    testWidgets('Handles loading and success state on confirm borrow', (
+      WidgetTester tester,
+    ) async {
       final completer = Completer<void>();
 
       await tester.pumpWidget(
@@ -240,8 +238,9 @@ void main() {
       expect(find.byKey(const Key('borrow_success_done_btn')), findsOneWidget);
     });
 
-    testWidgets('Handles error state gracefully without fake success',
-        (WidgetTester tester) async {
+    testWidgets('Handles error state gracefully without fake success', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -261,11 +260,75 @@ void main() {
       expect(find.text('Borrowing limit exceeded.'), findsOneWidget);
       expect(find.byKey(const Key('borrow_confirm_btn')), findsOneWidget);
     });
+
+    testWidgets('Cancel button dismisses BorrowConfirmationSheet with false', (
+      WidgetTester tester,
+    ) async {
+      bool? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await BorrowConfirmationSheet.show(
+                  context,
+                  book: availableBook,
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('borrow_cancel_btn')));
+      await tester.pumpAndSettle();
+
+      expect(result, isFalse);
+    });
+
+    testWidgets(
+      'BorrowConfirmationSheet disables buttons while borrow request is in progress',
+      (WidgetTester tester) async {
+        final completer = Completer<void>();
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: BorrowConfirmationSheet(
+                book: availableBook,
+                onConfirmBorrow: () => completer.future,
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const Key('borrow_confirm_btn')));
+        await tester.pump();
+
+        // Both buttons should be disabled during loading
+        final confirmBtn = tester.widget<FilledButton>(
+          find.byKey(const Key('borrow_confirm_btn')),
+        );
+        final cancelBtn = tester.widget<OutlinedButton>(
+          find.byKey(const Key('borrow_cancel_btn')),
+        );
+        expect(confirmBtn.onPressed, isNull);
+        expect(cancelBtn.onPressed, isNull);
+
+        completer.complete();
+        await tester.pumpAndSettle();
+      },
+    );
   });
 
   group('BorrowedBookCard Widget Tests', () {
-    testWidgets('Renders active loan details and return action',
-        (WidgetTester tester) async {
+    testWidgets('Renders active loan details and return action', (
+      WidgetTester tester,
+    ) async {
       bool returnTapped = false;
 
       await tester.pumpWidget(
@@ -288,35 +351,80 @@ void main() {
       expect(returnTapped, isTrue);
     });
 
-    testWidgets('Renders overdue status badge for past due loans',
-        (WidgetTester tester) async {
+    testWidgets('Renders overdue status badge for past due loans', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BorrowedBookCard(
-              loan: sampleOverdueLoan,
-              onReturn: () {},
-            ),
+            body: BorrowedBookCard(loan: sampleOverdueLoan, onReturn: () {}),
           ),
         ),
       );
 
-      expect(
-        find.text('Designing Data-Intensive Applications'),
-        findsWidgets,
-      );
+      expect(find.text('Designing Data-Intensive Applications'), findsWidgets);
       expect(find.textContaining('Overdue'), findsOneWidget);
     });
-  });
 
-  group('ReturnConfirmationDialog Widget Tests', () {
-    testWidgets('Renders return dialog content, cancel, and confirm buttons',
-        (WidgetTester tester) async {
+    testWidgets('Renders warning status badge when book is due in <= 3 days', (
+      WidgetTester tester,
+    ) async {
+      final dueSoonLoan = LoanRecord(
+        id: 'loan-due-soon',
+        bookId: 'book-avail-1',
+        bookTitle: 'Clean Code',
+        bookAuthor: 'Robert C. Martin',
+        borrowDate: DateTime.now().subtract(const Duration(days: 12)),
+        dueDate: DateTime.now().add(const Duration(days: 2, hours: 4)),
+        status: 'active',
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: ReturnConfirmationDialog(loan: sampleLoan1),
+            body: BorrowedBookCard(loan: dueSoonLoan, onReturn: () {}),
           ),
+        ),
+      );
+
+      expect(find.textContaining('Due in'), findsOneWidget);
+    });
+
+    testWidgets(
+      'Renders placeholder cover gracefully when bookImageUrl is null or empty',
+      (WidgetTester tester) async {
+        final noImageLoan = LoanRecord(
+          id: 'loan-no-img',
+          bookId: 'book-avail-1',
+          bookTitle: 'Clean Architecture',
+          bookAuthor: 'Robert C. Martin',
+          bookImageUrl: '',
+          borrowDate: DateTime.now().subtract(const Duration(days: 2)),
+          dueDate: DateTime.now().add(const Duration(days: 12)),
+          status: 'active',
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: BorrowedBookCard(loan: noImageLoan, onReturn: () {}),
+            ),
+          ),
+        );
+
+        expect(find.text('Clean Architecture'), findsWidgets);
+        expect(find.byIcon(Icons.menu_book_rounded), findsOneWidget);
+      },
+    );
+  });
+
+  group('ReturnConfirmationDialog Widget Tests', () {
+    testWidgets('Renders return dialog content, cancel, and confirm buttons', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: ReturnConfirmationDialog(loan: sampleLoan1)),
         ),
       );
 
@@ -326,8 +434,9 @@ void main() {
       expect(find.byKey(const Key('return_cancel_btn')), findsOneWidget);
     });
 
-    testWidgets('Handles loading and success state on return confirm',
-        (WidgetTester tester) async {
+    testWidgets('Handles loading and success state on return confirm', (
+      WidgetTester tester,
+    ) async {
       final completer = Completer<void>();
 
       await tester.pumpWidget(
@@ -352,19 +461,103 @@ void main() {
       expect(find.text('Book Marked as Returned'), findsOneWidget);
       expect(find.byKey(const Key('return_success_done_btn')), findsOneWidget);
     });
+
+    testWidgets('Cancel button dismisses ReturnConfirmationDialog with false', (
+      WidgetTester tester,
+    ) async {
+      bool? result;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                result = await ReturnConfirmationDialog.show(
+                  context,
+                  loan: sampleLoan1,
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('return_cancel_btn')));
+      await tester.pumpAndSettle();
+
+      expect(result, isFalse);
+    });
+
+    testWidgets(
+      'ReturnConfirmationDialog handles backend error and shows error banner',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: ReturnConfirmationDialog(
+                loan: sampleLoan1,
+                onConfirmReturn: () async {
+                  throw Exception('Loan record does not exist.');
+                },
+              ),
+            ),
+          ),
+        );
+
+        await tester.tap(find.byKey(const Key('return_confirm_btn')));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Loan record does not exist.'), findsOneWidget);
+        expect(find.byKey(const Key('return_confirm_btn')), findsOneWidget);
+      },
+    );
+
+    testWidgets('ReturnConfirmationDialog disables buttons while loading', (
+      WidgetTester tester,
+    ) async {
+      final completer = Completer<void>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ReturnConfirmationDialog(
+              loan: sampleLoan1,
+              onConfirmReturn: () => completer.future,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('return_confirm_btn')));
+      await tester.pump();
+
+      final confirmBtn = tester.widget<FilledButton>(
+        find.byKey(const Key('return_confirm_btn')),
+      );
+      final cancelBtn = tester.widget<TextButton>(
+        find.byKey(const Key('return_cancel_btn')),
+      );
+      expect(confirmBtn.onPressed, isNull);
+      expect(cancelBtn.onPressed, isNull);
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
   });
 
   group('MemberCirculationScreen Widget Tests', () {
-    testWidgets('Shows loading state while loan stream is waiting',
-        (WidgetTester tester) async {
+    testWidgets('Shows loading state while loan stream is waiting', (
+      WidgetTester tester,
+    ) async {
       final controller = StreamController<List<LoanRecord>>();
       addTearDown(controller.close);
 
       await tester.pumpWidget(
         MaterialApp(
-          home: MemberCirculationScreen(
-            loansStream: controller.stream,
-          ),
+          home: MemberCirculationScreen(loansStream: controller.stream),
         ),
       );
 
@@ -372,8 +565,9 @@ void main() {
       expect(find.text('Loading your borrowed books...'), findsOneWidget);
     });
 
-    testWidgets('Shows empty state when no books are borrowed',
-        (WidgetTester tester) async {
+    testWidgets('Shows empty state when no books are borrowed', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
           home: MemberCirculationScreen(
@@ -390,16 +584,36 @@ void main() {
       );
     });
 
-    testWidgets('Shows error state with retry button on stream failure',
-        (WidgetTester tester) async {
+    testWidgets(
+      'Tapping Browse Book Catalog in empty state navigates to BookCatalogScreen',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MemberCirculationScreen(
+              loansStream: Stream.value(<LoanRecord>[]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(
+          find.byKey(const Key('circulation_browse_catalog_btn')),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('Book Catalog'), findsOneWidget);
+      },
+    );
+
+    testWidgets('Shows error state with retry button on stream failure', (
+      WidgetTester tester,
+    ) async {
       final controller = StreamController<List<LoanRecord>>();
       addTearDown(controller.close);
 
       await tester.pumpWidget(
         MaterialApp(
-          home: MemberCirculationScreen(
-            loansStream: controller.stream,
-          ),
+          home: MemberCirculationScreen(loansStream: controller.stream),
         ),
       );
 
@@ -410,15 +624,38 @@ void main() {
       expect(find.byKey(const Key('circulation_retry_btn')), findsOneWidget);
     });
 
-    testWidgets('Renders active borrowed books list',
-        (WidgetTester tester) async {
+    testWidgets('Tapping Retry button in error state triggers stream reload', (
+      WidgetTester tester,
+    ) async {
+      final controller = StreamController<List<LoanRecord>>.broadcast();
+      addTearDown(controller.close);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: MemberCirculationScreen(loansStream: controller.stream),
+        ),
+      );
+
+      controller.addError(Exception('Network error'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Failed to load borrowed books'), findsOneWidget);
+      expect(find.byKey(const Key('circulation_retry_btn')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('circulation_retry_btn')));
+      await tester.pump();
+
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('Renders active borrowed books list with overdue banner', (
+      WidgetTester tester,
+    ) async {
       final loans = [sampleLoan1, sampleOverdueLoan];
 
       await tester.pumpWidget(
         MaterialApp(
-          home: MemberCirculationScreen(
-            loansStream: Stream.value(loans),
-          ),
+          home: MemberCirculationScreen(loansStream: Stream.value(loans)),
         ),
       );
       await tester.pumpAndSettle();
@@ -428,36 +665,72 @@ void main() {
         findsOneWidget,
       );
       expect(find.text('Clean Code'), findsWidgets);
-      expect(
-        find.text('Designing Data-Intensive Applications'),
-        findsWidgets,
-      );
+      expect(find.text('Designing Data-Intensive Applications'), findsWidgets);
       expect(find.byKey(Key('loan_card_${sampleLoan1.id}')), findsOneWidget);
       expect(
         find.byKey(Key('loan_card_${sampleOverdueLoan.id}')),
         findsOneWidget,
       );
     });
+
+    testWidgets(
+      'Renders standard active loan banner when no loans are overdue',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MemberCirculationScreen(
+              loansStream: Stream.value([sampleLoan1]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text('You currently have 1 active borrowed book(s).'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'Tapping Return on a loan card opens ReturnConfirmationDialog',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: MemberCirculationScreen(
+              loansStream: Stream.value([sampleLoan1]),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        final returnBtn = find.byKey(Key('return_btn_${sampleLoan1.id}'));
+        expect(returnBtn, findsOneWidget);
+
+        await tester.tap(returnBtn);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(ReturnConfirmationDialog), findsOneWidget);
+        expect(find.text('Return Book'), findsOneWidget);
+      },
+    );
   });
 
   group('HomeScreen to Member Circulation Navigation Tests', () {
     testWidgets(
-        'Tapping Borrowing card on HomeScreen opens MemberCirculationScreen',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: HomeScreen(),
-        ),
-      );
+      'Tapping Borrowing card on HomeScreen opens MemberCirculationScreen',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
-      // Tap Borrowing Quick Access card
-      await tester.tap(find.text('Borrowing'));
-      await tester.pumpAndSettle();
+        // Tap Borrowing Quick Access card
+        await tester.tap(find.text('Borrowing'));
+        await tester.pumpAndSettle();
 
-      // Verify MemberCirculationScreen is opened
-      expect(find.byType(MemberCirculationScreen), findsOneWidget);
-      expect(find.text('My Borrowed Books'), findsOneWidget);
-    });
+        // Verify MemberCirculationScreen is opened
+        expect(find.byType(MemberCirculationScreen), findsOneWidget);
+        expect(find.text('My Borrowed Books'), findsOneWidget);
+      },
+    );
   });
 
   group('CirculationService Transaction & Security Unit Tests', () {
@@ -521,10 +794,8 @@ void main() {
       );
 
       expect(
-        () => service.requestBorrow(
-          book: unavailableBook,
-          memberId: 'user-123',
-        ),
+        () =>
+            service.requestBorrow(book: unavailableBook, memberId: 'user-123'),
         throwsA(
           isA<Exception>().having(
             (e) => e.toString(),
@@ -535,11 +806,9 @@ void main() {
       );
     });
 
-    test(
-        'requestBorrow throws error when user already has an active loan for same book',
-        () async {
-      fakeFirestore.store.documents['books/${availableBook.id}'] =
-          availableBook.toFirestore();
+    test('requestBorrow throws error when user already has an active loan for same book', () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] = availableBook
+          .toFirestore();
       fakeFirestore.store.documents['loans/existing-loan'] = {
         'bookId': availableBook.id,
         'memberId': 'user-123',
@@ -563,11 +832,9 @@ void main() {
       );
     });
 
-    test(
-        'requestBorrow succeeds: decrements copies, sets isAvailable, creates loan',
-        () async {
-      fakeFirestore.store.documents['books/${availableBook.id}'] =
-          availableBook.toFirestore(); // availableCopies: 3
+    test('requestBorrow succeeds: decrements copies, sets isAvailable, creates loan', () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] = availableBook
+          .toFirestore(); // availableCopies: 3
 
       final service = CirculationService(
         firestore: fakeFirestore,
@@ -591,24 +858,26 @@ void main() {
       expect(loanData['status'], 'active');
     });
 
-    test('requestBorrow sets isAvailable false when last copy borrowed',
-        () async {
-      final singleCopyBook = availableBook.copyWith(availableCopies: 1);
-      fakeFirestore.store.documents['books/${singleCopyBook.id}'] =
-          singleCopyBook.toFirestore();
+    test(
+      'requestBorrow sets isAvailable false when last copy borrowed',
+      () async {
+        final singleCopyBook = availableBook.copyWith(availableCopies: 1);
+        fakeFirestore.store.documents['books/${singleCopyBook.id}'] =
+            singleCopyBook.toFirestore();
 
-      final service = CirculationService(
-        firestore: fakeFirestore,
-        auth: fakeAuth,
-      );
+        final service = CirculationService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
 
-      await service.requestBorrow(book: singleCopyBook, memberId: 'user-123');
+        await service.requestBorrow(book: singleCopyBook, memberId: 'user-123');
 
-      final updatedBookMap =
-          fakeFirestore.store.documents['books/${singleCopyBook.id}']!;
-      expect(updatedBookMap['availableCopies'], 0);
-      expect(updatedBookMap['isAvailable'], false);
-    });
+        final updatedBookMap =
+            fakeFirestore.store.documents['books/${singleCopyBook.id}']!;
+        expect(updatedBookMap['availableCopies'], 0);
+        expect(updatedBookMap['isAvailable'], false);
+      },
+    );
 
     test('requestReturn throws error when user is unauthenticated', () async {
       final service = CirculationService(
@@ -646,30 +915,32 @@ void main() {
       );
     });
 
-    test('requestReturn throws error when loan belongs to another user',
-        () async {
-      fakeFirestore.store.documents['loans/other-loan'] = {
-        'bookId': availableBook.id,
-        'memberId': 'different-user-999',
-        'status': 'active',
-      };
+    test(
+      'requestReturn throws error when loan belongs to another user',
+      () async {
+        fakeFirestore.store.documents['loans/other-loan'] = {
+          'bookId': availableBook.id,
+          'memberId': 'different-user-999',
+          'status': 'active',
+        };
 
-      final service = CirculationService(
-        firestore: fakeFirestore,
-        auth: fakeAuth,
-      );
+        final service = CirculationService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
 
-      expect(
-        () => service.requestReturn(loanId: 'other-loan'),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('not authorized'),
+        expect(
+          () => service.requestReturn(loanId: 'other-loan'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('not authorized'),
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
 
     test('requestReturn throws error when loan is already returned', () async {
       fakeFirestore.store.documents['loans/returned-loan'] = {
@@ -696,11 +967,9 @@ void main() {
       );
     });
 
-    test(
-        'requestReturn succeeds: updates loan status and increments availableCopies',
-        () async {
-      fakeFirestore.store.documents['books/${availableBook.id}'] =
-          availableBook.toFirestore(); // availableCopies: 3
+    test('requestReturn succeeds: updates loan status and increments availableCopies', () async {
+      fakeFirestore.store.documents['books/${availableBook.id}'] = availableBook
+          .toFirestore(); // availableCopies: 3
       fakeFirestore.store.documents['loans/valid-loan'] = {
         'bookId': availableBook.id,
         'bookTitle': availableBook.title,
@@ -718,8 +987,7 @@ void main() {
 
       await service.requestReturn(loanId: 'valid-loan');
 
-      final updatedLoanMap =
-          fakeFirestore.store.documents['loans/valid-loan']!;
+      final updatedLoanMap = fakeFirestore.store.documents['loans/valid-loan']!;
       expect(updatedLoanMap['status'], 'returned');
       expect(updatedLoanMap['returnDate'], isNotNull);
 
@@ -730,75 +998,82 @@ void main() {
     });
 
     test(
-        'requestReturn succeeds cleanly when book document is missing in catalog',
-        () async {
-      fakeFirestore.store.documents['loans/orphan-loan'] = {
-        'bookId': 'deleted-book-999',
-        'bookTitle': 'Deleted Book',
-        'bookAuthor': 'Unknown Author',
-        'borrowDate': Timestamp.now(),
-        'dueDate': Timestamp.now(),
-        'memberId': 'user-123',
-        'status': 'active',
-      };
+      'requestReturn succeeds cleanly when book document is missing in catalog',
+      () async {
+        fakeFirestore.store.documents['loans/orphan-loan'] = {
+          'bookId': 'deleted-book-999',
+          'bookTitle': 'Deleted Book',
+          'bookAuthor': 'Unknown Author',
+          'borrowDate': Timestamp.now(),
+          'dueDate': Timestamp.now(),
+          'memberId': 'user-123',
+          'status': 'active',
+        };
 
-      final service = CirculationService(
-        firestore: fakeFirestore,
-        auth: fakeAuth,
-      );
+        final service = CirculationService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
 
-      await service.requestReturn(loanId: 'orphan-loan');
+        await service.requestReturn(loanId: 'orphan-loan');
 
-      final updatedLoanMap =
-          fakeFirestore.store.documents['loans/orphan-loan']!;
-      expect(updatedLoanMap['status'], 'returned');
-      expect(updatedLoanMap['returnDate'], isNotNull);
-    });
+        final updatedLoanMap =
+            fakeFirestore.store.documents['loans/orphan-loan']!;
+        expect(updatedLoanMap['status'], 'returned');
+        expect(updatedLoanMap['returnDate'], isNotNull);
+      },
+    );
 
-    test('requestReturn fails on second call and does not double-increment copies',
-        () async {
-      fakeFirestore.store.documents['books/${availableBook.id}'] =
-          availableBook.toFirestore(); // availableCopies: 3
-      fakeFirestore.store.documents['loans/double-return-loan'] = {
-        'bookId': availableBook.id,
-        'bookTitle': availableBook.title,
-        'bookAuthor': availableBook.author,
-        'borrowDate': Timestamp.now(),
-        'dueDate': Timestamp.now(),
-        'memberId': 'user-123',
-        'status': 'active',
-      };
+    test(
+      'requestReturn fails on second call and does not double-increment copies',
+      () async {
+        fakeFirestore.store.documents['books/${availableBook.id}'] =
+            availableBook.toFirestore(); // availableCopies: 3
+        fakeFirestore.store.documents['loans/double-return-loan'] = {
+          'bookId': availableBook.id,
+          'bookTitle': availableBook.title,
+          'bookAuthor': availableBook.author,
+          'borrowDate': Timestamp.now(),
+          'dueDate': Timestamp.now(),
+          'memberId': 'user-123',
+          'status': 'active',
+        };
 
-      final service = CirculationService(
-        firestore: fakeFirestore,
-        auth: fakeAuth,
-      );
+        final service = CirculationService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
 
-      // First return succeeds
-      await service.requestReturn(loanId: 'double-return-loan');
-      expect(
-        fakeFirestore.store.documents['books/${availableBook.id}']!['availableCopies'],
-        4,
-      );
+        // First return succeeds
+        await service.requestReturn(loanId: 'double-return-loan');
+        expect(
+          fakeFirestore
+              .store
+              .documents['books/${availableBook.id}']!['availableCopies'],
+          4,
+        );
 
-      // Second return throws error
-      expect(
-        () => service.requestReturn(loanId: 'double-return-loan'),
-        throwsA(
-          isA<Exception>().having(
-            (e) => e.toString(),
-            'message',
-            contains('already been returned'),
+        // Second return throws error
+        expect(
+          () => service.requestReturn(loanId: 'double-return-loan'),
+          throwsA(
+            isA<Exception>().having(
+              (e) => e.toString(),
+              'message',
+              contains('already been returned'),
+            ),
           ),
-        ),
-      );
+        );
 
-      // Copies remain 4, NOT 5
-      expect(
-        fakeFirestore.store.documents['books/${availableBook.id}']!['availableCopies'],
-        4,
-      );
-    });
+        // Copies remain 4, NOT 5
+        expect(
+          fakeFirestore
+              .store
+              .documents['books/${availableBook.id}']!['availableCopies'],
+          4,
+        );
+      },
+    );
   });
 }
 
@@ -966,7 +1241,10 @@ class FakeCollectionReference<T extends Object?> extends Fake
     Iterable<Object?>? whereNotIn,
     bool? isNull,
   }) {
-    return FakeQuery<T>(_collectionPath, _store).where(field, isEqualTo: isEqualTo);
+    return FakeQuery<T>(
+      _collectionPath,
+      _store,
+    ).where(field, isEqualTo: isEqualTo);
   }
 
   @override
@@ -986,7 +1264,8 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Future<DocumentSnapshot<T>> get<T extends Object?>(
-      DocumentReference<T> documentSnapshot) async {
+    DocumentReference<T> documentSnapshot,
+  ) async {
     if (_hasWritten) {
       throw StateError(
         'FirestoreException: Reads must occur before any writes in a transaction.',
@@ -999,11 +1278,14 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Transaction update(
-      DocumentReference<Object?> documentSnapshot, Map<Object, Object?> data) {
+    DocumentReference<Object?> documentSnapshot,
+    Map<Object, Object?> data,
+  ) {
     _hasWritten = true;
     final ref = documentSnapshot as FakeDocumentReference;
-    final existing =
-        Map<String, dynamic>.from(_store.documents[ref._path] ?? {});
+    final existing = Map<String, dynamic>.from(
+      _store.documents[ref._path] ?? {},
+    );
     data.forEach((k, v) => existing[k.toString()] = v);
     _store.documents[ref._path] = existing;
     return this;
@@ -1011,8 +1293,10 @@ class FakeTransaction extends Fake implements Transaction {
 
   @override
   Transaction set<T extends Object?>(
-      DocumentReference<T> documentSnapshot, T data,
-      [SetOptions? options]) {
+    DocumentReference<T> documentSnapshot,
+    T data, [
+    SetOptions? options,
+  ]) {
     _hasWritten = true;
     final ref = documentSnapshot as FakeDocumentReference<T>;
     if (data is Map<String, dynamic>) {
@@ -1021,7 +1305,6 @@ class FakeTransaction extends Fake implements Transaction {
     return this;
   }
 }
-
 
 class FakeFirestoreData {
   final Map<String, Map<String, dynamic>> documents = {};
@@ -1036,12 +1319,12 @@ class FakeFirebaseFirestore extends Fake implements FirebaseFirestore {
   }
 
   @override
-  Future<T> runTransaction<T>(TransactionHandler<T> transactionHandler,
-      {Duration timeout = const Duration(seconds: 30),
-      int maxAttempts = 5}) async {
+  Future<T> runTransaction<T>(
+    TransactionHandler<T> transactionHandler, {
+    Duration timeout = const Duration(seconds: 30),
+    int maxAttempts = 5,
+  }) async {
     final transaction = FakeTransaction(store);
     return await transactionHandler(transaction);
   }
 }
-
-

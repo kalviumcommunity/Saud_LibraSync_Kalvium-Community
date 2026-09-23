@@ -14,6 +14,7 @@ class BorrowConfirmationSheet extends StatefulWidget {
     required this.book,
     this.onConfirmBorrow,
     this.circulationService,
+    this.memberId,
   });
 
   /// The book being requested for borrowing.
@@ -25,12 +26,16 @@ class BorrowConfirmationSheet extends StatefulWidget {
   /// Optional circulation service instance.
   final CirculationService? circulationService;
 
+  /// Optional member identifier. Defaults to the current logged-in user.
+  final String? memberId;
+
   /// Static helper method to display the confirmation sheet.
   static Future<bool?> show(
     BuildContext context, {
     required Book book,
     Future<void> Function()? onConfirmBorrow,
     CirculationService? circulationService,
+    String? memberId,
   }) {
     return showModalBottomSheet<bool>(
       context: context,
@@ -47,6 +52,7 @@ class BorrowConfirmationSheet extends StatefulWidget {
           book: book,
           onConfirmBorrow: onConfirmBorrow,
           circulationService: circulationService,
+          memberId: memberId,
         ),
       ),
     );
@@ -75,8 +81,18 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
 
   String _formatDate(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
@@ -92,11 +108,9 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
         await widget.onConfirmBorrow!();
       } else {
         final service = widget.circulationService ?? CirculationService();
-        final currentUserId = AuthService().currentUser?.uid ?? 'guest';
-        await service.requestBorrow(
-          book: widget.book,
-          memberId: currentUserId,
-        );
+        final currentUserId =
+            widget.memberId ?? AuthService().currentUser?.uid ?? '';
+        await service.requestBorrow(book: widget.book, memberId: currentUserId);
       }
 
       if (mounted) {
@@ -110,7 +124,8 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
         setState(() {
           _isLoading = false;
           _errorMessage = e is UnimplementedError
-              ? (e.message ?? 'Borrowing transactions are coming in the backend milestone.')
+              ? (e.message ??
+                    'Borrowing transactions are coming in the backend milestone.')
               : e.toString().replaceAll('Exception: ', '');
         });
       }
@@ -232,7 +247,8 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
                         width: 52,
                         height: 74,
                         color: colorScheme.primaryContainer,
-                        child: (widget.book.imageUrl != null &&
+                        child:
+                            (widget.book.imageUrl != null &&
                                 widget.book.imageUrl!.trim().isNotEmpty)
                             ? Image.network(
                                 widget.book.imageUrl!,
@@ -415,7 +431,9 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
         Icon(
           icon,
           size: 18,
-          color: isHighlighted ? colorScheme.primary : colorScheme.onSurfaceVariant,
+          color: isHighlighted
+              ? colorScheme.primary
+              : colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 10),
         Text(
@@ -433,7 +451,9 @@ class _BorrowConfirmationSheetState extends State<BorrowConfirmationSheet> {
             textAlign: TextAlign.end,
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: isHighlighted ? FontWeight.bold : FontWeight.w600,
-              color: isHighlighted ? colorScheme.primary : colorScheme.onSurface,
+              color: isHighlighted
+                  ? colorScheme.primary
+                  : colorScheme.onSurface,
             ),
           ),
         ),

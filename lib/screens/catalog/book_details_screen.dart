@@ -17,6 +17,7 @@ class BookDetailsScreen extends StatefulWidget {
     this.onConfirmBorrow,
     this.bookService,
     this.isStaff,
+    this.memberId,
   });
 
   /// The book to display.
@@ -33,6 +34,9 @@ class BookDetailsScreen extends StatefulWidget {
 
   /// Optional staff status override (useful for testing or direct permission pass-through).
   final bool? isStaff;
+
+  /// Optional member identifier for borrowing.
+  final String? memberId;
 
   @override
   State<BookDetailsScreen> createState() => _BookDetailsScreenState();
@@ -76,6 +80,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
       book: _currentBook,
       onConfirmBorrow: widget.onConfirmBorrow,
       circulationService: widget.circulationService,
+      memberId: widget.memberId,
     );
 
     // Propagate a successful borrow to the previous route (e.g.
