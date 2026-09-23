@@ -13,6 +13,7 @@ class ReturnConfirmationDialog extends StatefulWidget {
     required this.loan,
     this.onConfirmReturn,
     this.circulationService,
+    this.returnBranchId,
   });
 
   /// The loan record being returned.
@@ -24,12 +25,16 @@ class ReturnConfirmationDialog extends StatefulWidget {
   /// Optional circulation service instance.
   final CirculationService? circulationService;
 
+  /// Optional physical branch identifier where the book is being returned.
+  final String? returnBranchId;
+
   /// Static helper to display the return confirmation dialog.
   static Future<bool?> show(
     BuildContext context, {
     required LoanRecord loan,
     Future<void> Function()? onConfirmReturn,
     CirculationService? circulationService,
+    String? returnBranchId,
   }) {
     return showDialog<bool>(
       context: context,
@@ -37,6 +42,7 @@ class ReturnConfirmationDialog extends StatefulWidget {
         loan: loan,
         onConfirmReturn: onConfirmReturn,
         circulationService: circulationService,
+        returnBranchId: returnBranchId,
       ),
     );
   }
@@ -62,7 +68,10 @@ class _ReturnConfirmationDialogState extends State<ReturnConfirmationDialog> {
         await widget.onConfirmReturn!();
       } else {
         final service = widget.circulationService ?? CirculationService();
-        await service.requestReturn(loanId: widget.loan.id);
+        await service.requestReturn(
+          loanId: widget.loan.id,
+          returnBranchId: widget.returnBranchId,
+        );
       }
 
       if (mounted) {
@@ -76,7 +85,8 @@ class _ReturnConfirmationDialogState extends State<ReturnConfirmationDialog> {
         setState(() {
           _isLoading = false;
           _errorMessage = e is UnimplementedError
-              ? (e.message ?? 'Return transactions are coming in the backend milestone.')
+              ? (e.message ??
+                    'Return transactions are coming in the backend milestone.')
               : e.toString().replaceAll('Exception: ', '');
         });
       }
@@ -89,9 +99,7 @@ class _ReturnConfirmationDialogState extends State<ReturnConfirmationDialog> {
     final colorScheme = theme.colorScheme;
 
     return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       title: Row(
         children: [
           Icon(
@@ -170,7 +178,8 @@ class _ReturnConfirmationDialogState extends State<ReturnConfirmationDialog> {
                         width: 44,
                         height: 62,
                         color: colorScheme.primaryContainer,
-                        child: (widget.loan.bookImageUrl != null &&
+                        child:
+                            (widget.loan.bookImageUrl != null &&
                                 widget.loan.bookImageUrl!.trim().isNotEmpty)
                             ? Image.network(
                                 widget.loan.bookImageUrl!,

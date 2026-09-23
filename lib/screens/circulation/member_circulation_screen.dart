@@ -43,13 +43,22 @@ class _MemberCirculationScreenState extends State<MemberCirculationScreen> {
     _initStream();
   }
 
+  @override
+  void didUpdateWidget(covariant MemberCirculationScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.loansStream != oldWidget.loansStream ||
+        widget.circulationService != oldWidget.circulationService ||
+        widget.memberId != oldWidget.memberId) {
+      _retryStream();
+    }
+  }
+
   void _initStream() {
     if (widget.loansStream != null) {
       _stream = widget.loansStream!;
     } else {
       final service = widget.circulationService ?? CirculationService();
-      final currentMemberId =
-          widget.memberId ?? AuthService().currentUser?.uid;
+      final currentMemberId = widget.memberId ?? AuthService().currentUser?.uid;
       _stream = service.streamActiveLoans(memberId: currentMemberId);
     }
   }
@@ -135,10 +144,7 @@ class _MemberCirculationScreenState extends State<MemberCirculationScreen> {
 // ── Populated Loans List View ───────────────────────────────────────────────
 
 class _CirculationListView extends StatelessWidget {
-  const _CirculationListView({
-    required this.loans,
-    required this.onReturnTap,
-  });
+  const _CirculationListView({required this.loans, required this.onReturnTap});
 
   final List<LoanRecord> loans;
   final void Function(LoanRecord loan) onReturnTap;
@@ -230,9 +236,8 @@ class _CirculationLoadingView extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Loading your borrowed books...',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium
+                ?.copyWith(color: colorScheme.onSurfaceVariant),
           ),
         ],
       ),
@@ -291,10 +296,7 @@ class _CirculationEmptyView extends StatelessWidget {
 }
 
 class _CirculationErrorView extends StatelessWidget {
-  const _CirculationErrorView({
-    required this.error,
-    required this.onRetry,
-  });
+  const _CirculationErrorView({required this.error, required this.onRetry});
 
   final String error;
   final VoidCallback onRetry;
