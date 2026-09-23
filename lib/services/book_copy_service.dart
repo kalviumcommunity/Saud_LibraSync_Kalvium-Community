@@ -141,4 +141,141 @@ class BookCopyService {
       return Stream.error(e);
     }
   }
+
+  /// Fetches physical copies with 'available' status for a [bookId], optionally filtered by [branchId].
+  Future<List<BookCopy>> getAvailableCopiesForBook(
+    String bookId, {
+    String? branchId,
+  }) async {
+    final trimmedBookId = bookId.trim();
+    if (trimmedBookId.isEmpty) return [];
+
+    Query<Map<String, dynamic>> query = _bookCopiesCollection
+        .where('bookId', isEqualTo: trimmedBookId)
+        .where('status', isEqualTo: BookCopy.statusAvailable);
+
+    if (branchId != null && branchId.trim().isNotEmpty) {
+      query = query.where('branchId', isEqualTo: branchId.trim());
+    }
+
+    final snapshot = await query.get();
+    return snapshot.docs.map((doc) {
+      return BookCopy.fromFirestore(doc.data(), doc.id);
+    }).toList();
+  }
+
+  /// Streams real-time physical copies with 'available' status for a [bookId], optionally filtered by [branchId].
+  Stream<List<BookCopy>> streamAvailableCopiesForBook(
+    String bookId, {
+    String? branchId,
+  }) {
+    final trimmedBookId = bookId.trim();
+    if (trimmedBookId.isEmpty) {
+      return Stream.value([]);
+    }
+    try {
+      Query<Map<String, dynamic>> query = _bookCopiesCollection
+          .where('bookId', isEqualTo: trimmedBookId)
+          .where('status', isEqualTo: BookCopy.statusAvailable);
+
+      if (branchId != null && branchId.trim().isNotEmpty) {
+        query = query.where('branchId', isEqualTo: branchId.trim());
+      }
+
+      return query.snapshots().map((snapshot) {
+        return snapshot.docs.map((doc) {
+          return BookCopy.fromFirestore(doc.data(), doc.id);
+        }).toList();
+      });
+    } catch (e) {
+      return Stream.error(e);
+    }
+  }
+
+  /// Fetches all available physical copies located at a specific [branchId].
+  Future<List<BookCopy>> getAvailableCopiesForBranch(String branchId) async {
+    final trimmedId = branchId.trim();
+    if (trimmedId.isEmpty) return [];
+
+    final snapshot = await _bookCopiesCollection
+        .where('branchId', isEqualTo: trimmedId)
+        .where('status', isEqualTo: BookCopy.statusAvailable)
+        .get();
+    return snapshot.docs.map((doc) {
+      return BookCopy.fromFirestore(doc.data(), doc.id);
+    }).toList();
+  }
+
+  /// Streams all available physical copies located at a specific [branchId].
+  Stream<List<BookCopy>> streamAvailableCopiesForBranch(String branchId) {
+    final trimmedId = branchId.trim();
+    if (trimmedId.isEmpty) {
+      return Stream.value([]);
+    }
+    try {
+      return _bookCopiesCollection
+          .where('branchId', isEqualTo: trimmedId)
+          .where('status', isEqualTo: BookCopy.statusAvailable)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs.map((doc) {
+              return BookCopy.fromFirestore(doc.data(), doc.id);
+            }).toList();
+          });
+    } catch (e) {
+      return Stream.error(e);
+    }
+  }
+
+  /// Fetches all physical copies for a [bookId] at a specific [branchId].
+  Future<List<BookCopy>> getCopiesForBookAndBranch(
+    String bookId,
+    String branchId,
+  ) async {
+    final trimmedBookId = bookId.trim();
+    final trimmedBranchId = branchId.trim();
+    if (trimmedBookId.isEmpty || trimmedBranchId.isEmpty) return [];
+
+    final snapshot = await _bookCopiesCollection
+        .where('bookId', isEqualTo: trimmedBookId)
+        .where('branchId', isEqualTo: trimmedBranchId)
+        .get();
+    return snapshot.docs.map((doc) {
+      return BookCopy.fromFirestore(doc.data(), doc.id);
+    }).toList();
+  }
+
+  /// Streams physical copies for a [bookId] at a specific [branchId].
+  Stream<List<BookCopy>> streamCopiesForBookAndBranch(
+    String bookId,
+    String branchId,
+  ) {
+    final trimmedBookId = bookId.trim();
+    final trimmedBranchId = branchId.trim();
+    if (trimmedBookId.isEmpty || trimmedBranchId.isEmpty) {
+      return Stream.value([]);
+    }
+    try {
+      return _bookCopiesCollection
+          .where('bookId', isEqualTo: trimmedBookId)
+          .where('branchId', isEqualTo: trimmedBranchId)
+          .snapshots()
+          .map((snapshot) {
+            return snapshot.docs.map((doc) {
+              return BookCopy.fromFirestore(doc.data(), doc.id);
+            }).toList();
+          });
+    } catch (e) {
+      return Stream.error(e);
+    }
+  }
+
+  /// Returns the count of available copies for a [bookId], optionally filtered by [branchId].
+  Future<int> getAvailableCopyCountForBook(
+    String bookId, {
+    String? branchId,
+  }) async {
+    final copies = await getAvailableCopiesForBook(bookId, branchId: branchId);
+    return copies.length;
+  }
 }

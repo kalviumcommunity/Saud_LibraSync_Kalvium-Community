@@ -15,6 +15,18 @@ class BookCopy {
   static const String statusMaintenance = 'maintenance';
   static const String statusLost = 'lost';
 
+  /// Centralized set of recognized copy statuses.
+  static const Set<String> validStatuses = {
+    statusAvailable,
+    statusBorrowed,
+    statusMaintenance,
+    statusLost,
+  };
+
+  /// Validates whether a status string is a known valid status.
+  static bool isValidStatus(String status) =>
+      validStatuses.contains(status.trim().toLowerCase());
+
   /// Unique identifier for the physical book copy document.
   final String id;
 
@@ -59,6 +71,11 @@ class BookCopy {
     }
     if (status.trim().isEmpty) {
       throw ArgumentError('Status cannot be empty.');
+    }
+    if (!isValidStatus(status)) {
+      throw ArgumentError(
+        'Invalid copy status: "$status". Allowed statuses are: ${validStatuses.join(", ")}.',
+      );
     }
   }
 
