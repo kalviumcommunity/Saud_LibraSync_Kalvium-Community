@@ -10,8 +10,12 @@ import 'package:librasync/models/book.dart';
 import 'package:librasync/models/book_copy.dart';
 import 'package:librasync/models/branch.dart';
 import 'package:librasync/models/loan_record.dart';
+import 'package:librasync/screens/auth/auth_gate.dart';
+import 'package:librasync/screens/auth/login_screen.dart';
+import 'package:librasync/screens/auth/signup_screen.dart';
 import 'package:librasync/screens/catalog/book_catalog_screen.dart';
 import 'package:librasync/screens/catalog/book_details_screen.dart';
+import 'package:librasync/screens/home_screen.dart';
 import 'package:librasync/services/auth_service.dart';
 import 'package:librasync/services/book_copy_service.dart';
 import 'package:librasync/services/book_service.dart';
@@ -858,6 +862,238 @@ void main() {
       expect(branchCopies.first.branchId, 'branch-main');
     });
   });
+
+  group('AuthGate & HomeScreen Role-Based UI Integration Tests', () {
+    late FakeFirebaseFirestore fakeFirestore;
+
+    setUp(() {
+      fakeFirestore = FakeFirebaseFirestore();
+      fakeFirestore.store.documents['users/${staffUser.uid}'] = {
+        'uid': staffUser.uid,
+        'email': staffUser.email,
+        'role': 'staff',
+        'displayName': staffUser.displayName,
+      };
+      fakeFirestore.store.documents['users/${memberUser1.uid}'] = {
+        'uid': memberUser1.uid,
+        'email': memberUser1.email,
+        'role': 'member',
+        'displayName': memberUser1.displayName,
+      };
+      fakeFirestore.store.documents['books/${testBook.id}'] = testBook
+          .toFirestore();
+    });
+
+    testWidgets('AuthGate renders LoginScreen when user is not authenticated', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuth = FakeFirebaseAuth(currentUser: null);
+      final authService = AuthService(auth: fakeAuth, firestore: fakeFirestore);
+
+      await tester.pumpWidget(
+        MaterialApp(home: AuthGate(authService: authService)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoginScreen), findsOneWidget);
+      expect(find.byType(HomeScreen), findsNothing);
+      expect(find.text('Welcome to LibraSync'), findsOneWidget);
+      expect(find.byKey(const Key('login_submit_btn')), findsOneWidget);
+    });
+
+    testWidgets('AuthGate renders HomeScreen when user is authenticated', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuth = FakeFirebaseAuth(currentUser: staffUser);
+      final authService = AuthService(auth: fakeAuth, firestore: fakeFirestore);
+
+      await tester.pumpWidget(
+        MaterialApp(home: AuthGate(authService: authService)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(HomeScreen), findsOneWidget);
+      expect(find.byType(LoginScreen), findsNothing);
+      expect(find.text('Welcome to LibraSync'), findsOneWidget);
+      expect(find.text('Quick Access'), findsOneWidget);
+    });
+
+    testWidgets(
+      'AuthGate shows loading indicator while resolving auth stream',
+      (WidgetTester tester) async {
+        final controller = StreamController<User?>();
+        final fakeAuth = FakeFirebaseAuth(
+          currentUser: null,
+          authStreamController: controller,
+        );
+        final authService = AuthService(
+          auth: fakeAuth,
+          firestore: fakeFirestore,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(home: AuthGate(authService: authService)),
+        );
+
+        // In waiting state before any event is emitted
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+        // Now emit authenticated user
+        controller.add(staffUser);
+        await tester.pumpAndSettle();
+
+        expect(find.byType(HomeScreen), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsNothing);
+
+        await controller.close();
+      },
+    );
+
+    testWidgets(
+      'HomeScreen displays Staff badge and passes isStaff true to sub-screens',
+      (WidgetTester tester) async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: staffUser);
+        final authService = AuthService(
+          auth: fakeAuth,
+          firestore: fakeFirestore,
+        );
+        final bookService = BookService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: HomeScreen(
+              authService: authService,
+              bookService: bookService,
+              isStaff: true,
+              userRole: 'staff',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('home_role_badge_staff')), findsOneWidget);
+        expect(find.text('Staff'), findsOneWidget);
+
+        // Navigate to Books catalogue
+        await tester.tap(find.text('Books'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BookCatalogScreen), findsOneWidget);
+        expect(find.byKey(const Key('catalog_add_book_fab')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'HomeScreen displays Member badge and passes isStaff false to sub-screens',
+      (WidgetTester tester) async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: memberUser1);
+        final authService = AuthService(
+          auth: fakeAuth,
+          firestore: fakeFirestore,
+        );
+        final bookService = BookService(
+          firestore: fakeFirestore,
+          auth: fakeAuth,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: HomeScreen(
+              authService: authService,
+              bookService: bookService,
+              isStaff: false,
+              userRole: 'member',
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('home_role_badge_member')), findsOneWidget);
+        expect(find.text('Member'), findsOneWidget);
+
+        // Navigate to Books catalogue
+        await tester.tap(find.text('Books'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(BookCatalogScreen), findsOneWidget);
+        expect(find.byKey(const Key('catalog_add_book_fab')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'HomeScreen dynamically fetches role from AuthService when isStaff is null',
+      (WidgetTester tester) async {
+        final fakeAuth = FakeFirebaseAuth(currentUser: staffUser);
+        final authService = AuthService(
+          auth: fakeAuth,
+          firestore: fakeFirestore,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(home: HomeScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byKey(const Key('home_role_badge_staff')), findsOneWidget);
+        expect(find.text('Staff'), findsOneWidget);
+      },
+    );
+
+    testWidgets('HomeScreen logout dialog executes authService.signOut()', (
+      WidgetTester tester,
+    ) async {
+      final fakeAuth = FakeFirebaseAuth(currentUser: memberUser1);
+      final authService = AuthService(auth: fakeAuth, firestore: fakeFirestore);
+
+      await tester.pumpWidget(
+        MaterialApp(home: HomeScreen(authService: authService, isStaff: false)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(fakeAuth.currentUser, isNotNull);
+
+      // Tap logout icon in AppBar
+      await tester.tap(find.byIcon(Icons.logout_rounded));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Are you sure you want to log out of LibraSync?'),
+        findsOneWidget,
+      );
+
+      // Tap Log Out button
+      await tester.tap(find.byKey(const Key('logout_confirm_btn')));
+      await tester.pumpAndSettle();
+
+      expect(fakeAuth.currentUser, isNull);
+    });
+
+    testWidgets(
+      'LoginScreen navigates to SignUpScreen with injected authService',
+      (WidgetTester tester) async {
+        final fakeAuth = FakeFirebaseAuth();
+        final authService = AuthService(
+          auth: fakeAuth,
+          firestore: fakeFirestore,
+        );
+
+        await tester.pumpWidget(
+          MaterialApp(home: LoginScreen(authService: authService)),
+        );
+        await tester.pumpAndSettle();
+
+        // Tap Sign Up link
+        await tester.tap(find.text('Sign Up'));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(SignUpScreen), findsOneWidget);
+        expect(find.text('Create an Account'), findsOneWidget);
+      },
+    );
+  });
 }
 
 // ── Test Fakes & Mock Infrastructure ──────────────────────────────────────────
@@ -894,13 +1130,15 @@ class FakeUserCredential extends Fake implements UserCredential {
 }
 
 class FakeFirebaseAuth extends Fake implements FirebaseAuth {
-  FakeFirebaseAuth({this.currentUser});
+  FakeFirebaseAuth({this.currentUser, this.authStreamController});
 
   @override
   User? currentUser;
+  final StreamController<User?>? authStreamController;
 
   @override
-  Stream<User?> authStateChanges() => Stream.value(currentUser);
+  Stream<User?> authStateChanges() =>
+      authStreamController?.stream ?? Stream.value(currentUser);
 
   @override
   Future<UserCredential> signInWithEmailAndPassword({
@@ -909,6 +1147,7 @@ class FakeFirebaseAuth extends Fake implements FirebaseAuth {
   }) async {
     final user = FakeUser(uid: 'signed-in-${email.hashCode}', email: email);
     currentUser = user;
+    authStreamController?.add(user);
     return FakeUserCredential(user);
   }
 
@@ -919,12 +1158,14 @@ class FakeFirebaseAuth extends Fake implements FirebaseAuth {
   }) async {
     final user = FakeUser(uid: 'registered-${email.hashCode}', email: email);
     currentUser = user;
+    authStreamController?.add(user);
     return FakeUserCredential(user);
   }
 
   @override
   Future<void> signOut() async {
     currentUser = null;
+    authStreamController?.add(null);
   }
 }
 

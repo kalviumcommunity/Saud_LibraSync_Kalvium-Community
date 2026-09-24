@@ -7,11 +7,7 @@ import '../models/book.dart';
 /// Shows cover image (or placeholder), title, author, description preview,
 /// and availability status badge.
 class BookCard extends StatelessWidget {
-  const BookCard({
-    super.key,
-    required this.book,
-    this.onTap,
-  });
+  const BookCard({super.key, required this.book, this.onTap});
 
   /// The book data to display.
   final Book book;
@@ -191,7 +187,7 @@ class _BookCoverThumbnail extends StatelessWidget {
                           strokeWidth: 2,
                           value: progress.expectedTotalBytes != null
                               ? progress.cumulativeBytesLoaded /
-                                  progress.expectedTotalBytes!
+                                    progress.expectedTotalBytes!
                               : null,
                         ),
                       ),
@@ -245,10 +241,10 @@ class _CoverPlaceholder extends StatelessWidget {
               Text(
                 title.isNotEmpty ? title : 'Book',
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w600,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  color: colorScheme.onPrimaryContainer,
+                ),
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -279,9 +275,7 @@ class _AvailabilityChip extends StatelessWidget {
     final bgColor = isReady
         ? Colors.green.withAlpha(30)
         : Colors.orange.withAlpha(30);
-    final textColor = isReady
-        ? Colors.green.shade800
-        : Colors.orange.shade800;
+    final textColor = isReady ? Colors.green.shade800 : Colors.orange.shade800;
     final label = isReady ? 'Available' : 'Checked Out';
 
     return Container(
@@ -289,10 +283,7 @@ class _AvailabilityChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: bgColor,
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: textColor.withAlpha(60),
-          width: 0.8,
-        ),
+        border: Border.all(color: textColor.withAlpha(60), width: 0.8),
       ),
       child: Text(
         label,
