@@ -1,6 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/book_service.dart';
+import '../services/branch_service.dart';
+import '../services/circulation_service.dart';
 import '../widgets/dashboard_card.dart';
 import 'branches/branches_screen.dart';
 import 'catalog/book_catalog_screen.dart';
@@ -8,10 +12,79 @@ import 'circulation/member_circulation_screen.dart';
 
 /// The main home / dashboard screen for LibraSync.
 ///
-/// Displays a welcoming banner and a responsive grid of category cards
-/// that will be wired to real screens in future milestones.
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
+/// Displays a welcoming banner with user greeting and role badge,
+/// and a responsive grid of category cards wired to library features.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({
+    super.key,
+    this.authService,
+    this.bookService,
+    this.circulationService,
+    this.branchService,
+    this.isStaff,
+    this.userRole,
+  });
+
+  final AuthService? authService;
+  final BookService? bookService;
+  final CirculationService? circulationService;
+  final BranchService? branchService;
+  final bool? isStaff;
+  final String? userRole;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  late bool _isStaff;
+  late String _userRole;
+
+  AuthService get _authService => widget.authService ?? AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _isStaff = widget.isStaff ?? false;
+    _userRole = widget.userRole ?? 'member';
+    _checkUserRole();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.authService != oldWidget.authService ||
+        widget.isStaff != oldWidget.isStaff ||
+        widget.userRole != oldWidget.userRole) {
+      _checkUserRole();
+    }
+  }
+
+  Future<void> _checkUserRole() async {
+    if (widget.userRole != null || widget.isStaff != null) {
+      if (mounted) {
+        setState(() {
+          _userRole = widget.userRole ?? (_isStaff ? 'staff' : 'member');
+          _isStaff =
+              widget.isStaff ?? (_userRole == 'staff' || _userRole == 'admin');
+        });
+      }
+      return;
+    }
+
+    try {
+      final role = await _authService.getUserRole();
+      final isStaff = await _authService.isStaffUser();
+      if (mounted) {
+        setState(() {
+          _userRole = role;
+          _isStaff = isStaff;
+        });
+      }
+    } catch (_) {
+      // In case of unauthenticated / network / test default, fall through to member
+    }
+  }
 
   Future<void> _handleLogout(BuildContext context) async {
     final shouldLogout = await showDialog<bool>(
@@ -25,6 +98,7 @@ class HomeScreen extends StatelessWidget {
             child: const Text('Cancel'),
           ),
           FilledButton(
+            key: const Key('logout_confirm_btn'),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Log Out'),
           ),
@@ -33,13 +107,14 @@ class HomeScreen extends StatelessWidget {
     );
 
     if (shouldLogout == true) {
-      await AuthService().signOut();
+      await _authService.signOut();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final currentUser = _authService.currentUser;
 
     return Scaffold(
       appBar: AppBar(
@@ -73,7 +148,12 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Welcome Banner ──────────────────────────────────────
-              _WelcomeBanner(colorScheme: colorScheme),
+              _WelcomeBanner(
+                colorScheme: colorScheme,
+                user: currentUser,
+                userRole: _userRole,
+                isStaff: _isStaff,
+              ),
               const SizedBox(height: 24),
 
               // ── Section Title ───────────────────────────────────────
@@ -103,7 +183,10 @@ class HomeScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => const BookCatalogScreen(),
+                              builder: (context) => BookCatalogScreen(
+                                bookService: widget.bookService,
+                                isStaff: _isStaff,
+                              ),
                             ),
                           );
                         },
@@ -121,7 +204,9 @@ class HomeScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) => const BranchesScreen(),
+                              builder: (context) => BranchesScreen(
+                                branchService: widget.branchService,
+                              ),
                             ),
                           );
                         },
@@ -133,8 +218,9 @@ class HomeScreen extends StatelessWidget {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (context) =>
-                                  const MemberCirculationScreen(),
+                              builder: (context) => MemberCirculationScreen(
+                                circulationService: widget.circulationService,
+                              ),
                             ),
                           );
                         },
@@ -198,17 +284,26 @@ class HomeScreen extends StatelessWidget {
 // ── Private Widgets ──────────────────────────────────────────────────────
 
 class _WelcomeBanner extends StatelessWidget {
-  const _WelcomeBanner({required this.colorScheme});
+  const _WelcomeBanner({
+    required this.colorScheme,
+    required this.user,
+    required this.userRole,
+    required this.isStaff,
+  });
 
   final ColorScheme colorScheme;
+  final User? user;
+  final String userRole;
+  final bool isStaff;
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService().currentUser;
     final userGreeting =
         user?.displayName != null && user!.displayName!.trim().isNotEmpty
-        ? 'Hello, ${user.displayName}! Manage your library collection.'
-        : 'Your community library management hub.';
+        ? 'Hello, ${user!.displayName}! ${isStaff ? 'Manage your library catalog and collections.' : 'Manage your library collection.'}'
+        : (isStaff
+              ? 'Staff Management Portal.'
+              : 'Your community library management hub.');
 
     return Card(
       color: colorScheme.primaryContainer,
@@ -217,7 +312,9 @@ class _WelcomeBanner extends StatelessWidget {
         child: Row(
           children: [
             Icon(
-              Icons.local_library_rounded,
+              isStaff
+                  ? Icons.admin_panel_settings_rounded
+                  : Icons.local_library_rounded,
               size: 48,
               color: colorScheme.onPrimaryContainer,
             ),
@@ -226,12 +323,45 @@ class _WelcomeBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Welcome to LibraSync',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          'Welcome to LibraSync',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        key: Key(
+                          'home_role_badge_${isStaff ? 'staff' : 'member'}',
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isStaff
+                              ? colorScheme.primary
+                              : colorScheme.secondaryContainer,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          isStaff ? 'Staff' : 'Member',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: isStaff
+                                    ? colorScheme.onPrimary
+                                    : colorScheme.onSecondaryContainer,
+                              ),
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 4),
                   Text(

@@ -4,7 +4,9 @@ import '../../services/auth_service.dart';
 
 /// Screen allowing new users to create an account with LibraSync.
 class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key});
+  const SignUpScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
@@ -16,7 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _authService = AuthService();
+  AuthService get _authService => widget.authService ?? AuthService();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -107,7 +109,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     Text(
                       'Create an Account',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onSurface,
                           ),
@@ -116,9 +119,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     Text(
                       'Join LibraSync to manage books, members, and borrowings',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 28),
 
@@ -147,9 +149,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             Expanded(
                               child: Text(
                                 _errorMessage!,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: colorScheme.onErrorContainer,
                                       fontWeight: FontWeight.w500,
@@ -329,9 +329,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       children: [
                         Text(
                           'Already have an account?',
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
                         ),
                         TextButton(
                           onPressed: _isLoading

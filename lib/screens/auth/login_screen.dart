@@ -5,7 +5,9 @@ import 'signup_screen.dart';
 
 /// Screen allowing existing users to log in to LibraSync with email and password.
 class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.authService});
+
+  final AuthService? authService;
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -15,7 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _authService = AuthService();
+  AuthService get _authService => widget.authService ?? AuthService();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -93,7 +95,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Welcome to LibraSync',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
                             fontWeight: FontWeight.bold,
                             color: colorScheme.onSurface,
                           ),
@@ -102,9 +105,8 @@ class _LoginScreenState extends State<LoginScreen> {
                     Text(
                       'Sign in to manage your library collection and activities',
                       textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(color: colorScheme.onSurfaceVariant),
                     ),
                     const SizedBox(height: 32),
 
@@ -133,9 +135,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             Expanded(
                               child: Text(
                                 _errorMessage!,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
+                                style: Theme.of(context).textTheme.bodySmall
                                     ?.copyWith(
                                       color: colorScheme.onErrorContainer,
                                       fontWeight: FontWeight.w500,
@@ -247,9 +247,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       children: [
                         Text(
                           "Don't have an account?",
-                          style: TextStyle(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
+                          style: TextStyle(color: colorScheme.onSurfaceVariant),
                         ),
                         TextButton(
                           onPressed: _isLoading
@@ -257,7 +255,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               : () {
                                   Navigator.of(context).push(
                                     MaterialPageRoute(
-                                      builder: (context) => const SignUpScreen(),
+                                      builder: (context) => SignUpScreen(
+                                        authService: widget.authService,
+                                      ),
                                     ),
                                   );
                                 },

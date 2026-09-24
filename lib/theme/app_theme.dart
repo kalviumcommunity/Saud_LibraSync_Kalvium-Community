@@ -17,17 +17,12 @@ class AppTheme {
     colorSchemeSeed: _primarySeed,
 
     // AppBar
-    appBarTheme: const AppBarTheme(
-      centerTitle: false,
-      elevation: 0,
-    ),
+    appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
 
     // Cards
     cardTheme: CardThemeData(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
     ),
 
@@ -39,9 +34,7 @@ class AppTheme {
     // Input fields (for future use)
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 
@@ -52,17 +45,12 @@ class AppTheme {
     colorSchemeSeed: _primarySeed,
 
     // AppBar
-    appBarTheme: const AppBarTheme(
-      centerTitle: false,
-      elevation: 0,
-    ),
+    appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
 
     // Cards
     cardTheme: CardThemeData(
       elevation: 1,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
     ),
 
@@ -74,9 +62,7 @@ class AppTheme {
     // Input fields (for future use)
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 }

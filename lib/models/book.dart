@@ -185,18 +185,18 @@ class Book {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        title,
-        author,
-        description,
-        imageUrl,
-        isbn,
-        category,
-        publishedYear,
-        isAvailable,
-        totalCopies,
-        availableCopies,
-      );
+    id,
+    title,
+    author,
+    description,
+    imageUrl,
+    isbn,
+    category,
+    publishedYear,
+    isAvailable,
+    totalCopies,
+    availableCopies,
+  );
 
   @override
   String toString() {

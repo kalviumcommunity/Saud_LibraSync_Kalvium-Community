@@ -53,7 +53,10 @@ void main() {
       final map = sampleBook1.toFirestore();
       expect(map['title'], 'Clean Architecture');
       expect(map['author'], 'Robert C. Martin');
-      expect(map['description'], 'A Craftsman\'s Guide to Software Structure and Design.');
+      expect(
+        map['description'],
+        'A Craftsman\'s Guide to Software Structure and Design.',
+      );
       expect(map['category'], 'Software Engineering');
       expect(map['publishedYear'], 2017);
       expect(map['isbn'], '978-0134494166');
@@ -98,13 +101,12 @@ void main() {
   });
 
   group('BookCard Widget Tests', () {
-    testWidgets('Renders book title, author, description, and status chip',
-        (WidgetTester tester) async {
+    testWidgets('Renders book title, author, description, and status chip', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: BookCard(book: sampleBook1),
-          ),
+          home: Scaffold(body: BookCard(book: sampleBook1)),
         ),
       );
 
@@ -118,13 +120,12 @@ void main() {
       expect(find.text('Software Engineering'), findsOneWidget);
     });
 
-    testWidgets('Renders Checked Out badge when book unavailable',
-        (WidgetTester tester) async {
+    testWidgets('Renders Checked Out badge when book unavailable', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: Scaffold(
-            body: BookCard(book: sampleBook2),
-          ),
+          home: Scaffold(body: BookCard(book: sampleBook2)),
         ),
       );
 
@@ -132,16 +133,14 @@ void main() {
       expect(find.text('Checked Out'), findsOneWidget);
     });
 
-    testWidgets('Tapping BookCard triggers onTap callback',
-        (WidgetTester tester) async {
+    testWidgets('Tapping BookCard triggers onTap callback', (
+      WidgetTester tester,
+    ) async {
       bool tapped = false;
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: BookCard(
-              book: sampleBook1,
-              onTap: () => tapped = true,
-            ),
+            body: BookCard(book: sampleBook1, onTap: () => tapped = true),
           ),
         ),
       );
@@ -153,12 +152,11 @@ void main() {
   });
 
   group('BookDetailsScreen Widget Tests', () {
-    testWidgets('Renders all book details, metadata, and synopsis',
-        (WidgetTester tester) async {
+    testWidgets('Renders all book details, metadata, and synopsis', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookDetailsScreen(book: sampleBook1),
-        ),
+        MaterialApp(home: BookDetailsScreen(book: sampleBook1)),
       );
 
       expect(find.text('Clean Architecture'), findsWidgets);
@@ -178,47 +176,43 @@ void main() {
       );
     });
 
-    testWidgets('Renders unavailable status badge on details screen',
-        (WidgetTester tester) async {
+    testWidgets('Renders unavailable status badge on details screen', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookDetailsScreen(book: sampleBook2),
-        ),
+        MaterialApp(home: BookDetailsScreen(book: sampleBook2)),
       );
 
-      expect(find.text('Currently Unavailable (0 of 2 copies)'), findsOneWidget);
+      expect(
+        find.text('Currently Unavailable (0 of 2 copies)'),
+        findsOneWidget,
+      );
     });
   });
 
   group('BookCatalogScreen Widget Tests', () {
-    testWidgets('Shows loading state while stream is waiting',
-        (WidgetTester tester) async {
+    testWidgets('Shows loading state while stream is waiting', (
+      WidgetTester tester,
+    ) async {
       final controller = StreamController<List<Book>>();
       addTearDown(controller.close);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: controller.stream,
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: controller.stream)),
       );
 
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Loading catalog...'), findsOneWidget);
     });
 
-    testWidgets('Shows error state with retry button when stream errors',
-        (WidgetTester tester) async {
+    testWidgets('Shows error state with retry button when stream errors', (
+      WidgetTester tester,
+    ) async {
       final controller = StreamController<List<Book>>();
       addTearDown(controller.close);
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: controller.stream,
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: controller.stream)),
       );
 
       controller.addError(Exception('Network timeout'));
@@ -228,34 +222,30 @@ void main() {
       expect(find.byKey(const Key('catalog_retry_btn')), findsOneWidget);
     });
 
-    testWidgets('Shows empty state when no books exist in catalog',
-        (WidgetTester tester) async {
+    testWidgets('Shows empty state when no books exist in catalog', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(<Book>[]),
-          ),
+          home: BookCatalogScreen(booksStream: Stream.value(<Book>[])),
         ),
       );
       await tester.pump();
 
       expect(find.text('No Books Available'), findsOneWidget);
       expect(
-        find.text('The library catalog is currently empty.\nNew titles will appear here once added.'),
+        find.text(
+          'The library catalog is currently empty.\nNew titles will appear here once added.',
+        ),
         findsOneWidget,
       );
     });
 
-    testWidgets('Renders populated list of books',
-        (WidgetTester tester) async {
+    testWidgets('Renders populated list of books', (WidgetTester tester) async {
       final books = [sampleBook1, sampleBook2, sampleBook3];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(books),
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
       );
       await tester.pump();
 
@@ -265,16 +255,13 @@ void main() {
       expect(find.text('Flutter in Action'), findsWidgets);
     });
 
-    testWidgets('Filters books by title search query',
-        (WidgetTester tester) async {
+    testWidgets('Filters books by title search query', (
+      WidgetTester tester,
+    ) async {
       final books = [sampleBook1, sampleBook2, sampleBook3];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(books),
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
       );
       await tester.pump();
 
@@ -291,16 +278,13 @@ void main() {
       expect(find.text('Design Patterns'), findsNothing);
     });
 
-    testWidgets('Filters books by author search query',
-        (WidgetTester tester) async {
+    testWidgets('Filters books by author search query', (
+      WidgetTester tester,
+    ) async {
       final books = [sampleBook1, sampleBook2, sampleBook3];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(books),
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
       );
       await tester.pump();
 
@@ -316,16 +300,13 @@ void main() {
       expect(find.text('Flutter in Action'), findsNothing);
     });
 
-    testWidgets('Shows empty search state and clears search on button tap',
-        (WidgetTester tester) async {
+    testWidgets('Shows empty search state and clears search on button tap', (
+      WidgetTester tester,
+    ) async {
       final books = [sampleBook1, sampleBook2];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(books),
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
       );
       await tester.pump();
 
@@ -348,16 +329,13 @@ void main() {
       expect(find.text('Design Patterns'), findsWidgets);
     });
 
-    testWidgets('Tapping book card navigates to BookDetailsScreen',
-        (WidgetTester tester) async {
+    testWidgets('Tapping book card navigates to BookDetailsScreen', (
+      WidgetTester tester,
+    ) async {
       final books = [sampleBook1];
 
       await tester.pumpWidget(
-        MaterialApp(
-          home: BookCatalogScreen(
-            booksStream: Stream.value(books),
-          ),
-        ),
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
       );
       await tester.pump();
 
@@ -374,13 +352,10 @@ void main() {
   });
 
   group('HomeScreen to Book Catalog Navigation Tests', () {
-    testWidgets('Tapping Books card on HomeScreen opens BookCatalogScreen',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: HomeScreen(),
-        ),
-      );
+    testWidgets('Tapping Books card on HomeScreen opens BookCatalogScreen', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: HomeScreen()));
 
       // Tap Books Quick Access card
       await tester.tap(find.text('Books'));

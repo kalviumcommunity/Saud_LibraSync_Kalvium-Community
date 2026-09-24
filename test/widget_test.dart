@@ -39,13 +39,10 @@ void main() {
   });
 
   group('HomeScreen Tests', () {
-    testWidgets('LibraSync app renders home screen with quick access cards',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const LibraSyncApp(
-          home: HomeScreen(),
-        ),
-      );
+    testWidgets('LibraSync app renders home screen with quick access cards', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const LibraSyncApp(home: HomeScreen()));
 
       // Verify the app title and welcome banner.
       expect(find.text('LibraSync'), findsWidgets);
@@ -62,19 +59,18 @@ void main() {
       expect(find.byIcon(Icons.logout_rounded), findsOneWidget);
     });
 
-    testWidgets('Tapping logout button shows confirmation dialog',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const LibraSyncApp(
-          home: HomeScreen(),
-        ),
-      );
+    testWidgets('Tapping logout button shows confirmation dialog', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const LibraSyncApp(home: HomeScreen()));
 
       await tester.tap(find.byIcon(Icons.logout_rounded));
       await tester.pumpAndSettle();
 
-      expect(find.text('Are you sure you want to log out of LibraSync?'),
-          findsOneWidget);
+      expect(
+        find.text('Are you sure you want to log out of LibraSync?'),
+        findsOneWidget,
+      );
       expect(find.text('Cancel'), findsOneWidget);
       expect(find.text('Log Out'), findsWidgets);
     });
@@ -82,11 +78,7 @@ void main() {
 
   group('LoginScreen Tests', () {
     testWidgets('Renders all login UI elements', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       expect(find.text('Welcome to LibraSync'), findsOneWidget);
       expect(find.byKey(const Key('login_email_field')), findsOneWidget);
@@ -95,13 +87,10 @@ void main() {
       expect(find.text('Sign Up'), findsOneWidget);
     });
 
-    testWidgets('Validates empty email and password on submit',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets('Validates empty email and password on submit', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       // Tap Sign In without filling form.
       await tester.tap(find.byKey(const Key('login_submit_btn')));
@@ -111,13 +100,8 @@ void main() {
       expect(find.text('Please enter your password.'), findsOneWidget);
     });
 
-    testWidgets('Validates invalid email format',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: LoginScreen(),
-        ),
-      );
+    testWidgets('Validates invalid email format', (WidgetTester tester) async {
+      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
 
       await tester.enterText(
         find.byKey(const Key('login_email_field')),
@@ -137,33 +121,26 @@ void main() {
 
   group('SignUpScreen Tests', () {
     testWidgets('Renders all sign up UI elements', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignUpScreen(),
-        ),
-      );
+      await tester.pumpWidget(const MaterialApp(home: SignUpScreen()));
 
       expect(find.text('Create an Account'), findsOneWidget);
       expect(find.byKey(const Key('signup_name_field')), findsOneWidget);
       expect(find.byKey(const Key('signup_email_field')), findsOneWidget);
       expect(find.byKey(const Key('signup_password_field')), findsOneWidget);
-      expect(find.byKey(const Key('signup_confirm_password_field')), findsOneWidget);
+      expect(
+        find.byKey(const Key('signup_confirm_password_field')),
+        findsOneWidget,
+      );
       expect(find.byKey(const Key('signup_submit_btn')), findsOneWidget);
       expect(find.text('Sign In'), findsOneWidget);
     });
 
-    testWidgets('Validates short name and empty fields',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignUpScreen(),
-        ),
-      );
+    testWidgets('Validates short name and empty fields', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignUpScreen()));
 
-      await tester.enterText(
-        find.byKey(const Key('signup_name_field')),
-        'A',
-      );
+      await tester.enterText(find.byKey(const Key('signup_name_field')), 'A');
 
       await tester.tap(find.byKey(const Key('signup_submit_btn')));
       await tester.pumpAndSettle();
@@ -172,27 +149,15 @@ void main() {
         find.text('Name must be at least 2 characters long.'),
         findsOneWidget,
       );
-      expect(
-        find.text('Please enter your email address.'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Please enter a password.'),
-        findsOneWidget,
-      );
-      expect(
-        find.text('Please confirm your password.'),
-        findsOneWidget,
-      );
+      expect(find.text('Please enter your email address.'), findsOneWidget);
+      expect(find.text('Please enter a password.'), findsOneWidget);
+      expect(find.text('Please confirm your password.'), findsOneWidget);
     });
 
-    testWidgets('Validates short password and mismatched confirm password',
-        (WidgetTester tester) async {
-      await tester.pumpWidget(
-        const MaterialApp(
-          home: SignUpScreen(),
-        ),
-      );
+    testWidgets('Validates short password and mismatched confirm password', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(const MaterialApp(home: SignUpScreen()));
 
       await tester.enterText(
         find.byKey(const Key('signup_name_field')),
@@ -218,10 +183,7 @@ void main() {
         find.text('Password must be at least 6 characters long.'),
         findsOneWidget,
       );
-      expect(
-        find.text('Passwords do not match.'),
-        findsOneWidget,
-      );
+      expect(find.text('Passwords do not match.'), findsOneWidget);
     });
   });
 }
