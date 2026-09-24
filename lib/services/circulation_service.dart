@@ -131,6 +131,19 @@ class CirculationService {
       throw Exception('You already have an active loan for "${book.title}".');
     }
 
+    if (trimmedCopyId != null) {
+      final existingCopyLoans = await _loansCollection
+          .where('bookCopyId', isEqualTo: trimmedCopyId)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      if (existingCopyLoans.docs.isNotEmpty) {
+        throw Exception(
+          'Physical book copy "$trimmedCopyId" is already currently on loan.',
+        );
+      }
+    }
+
     // Run transaction to check availability and create loan atomically
     await _firestore.runTransaction((transaction) async {
       // ── READS (all reads must occur before any writes) ──
@@ -311,6 +324,34 @@ class CirculationService {
         copySnapshot = await transaction.get(copyRef);
       }
 
+      // Validations on physical copy if associated with this loan
+      BookCopy? copy;
+      if (loanRecord.bookCopyId != null &&
+          loanRecord.bookCopyId!.trim().isNotEmpty) {
+        if (copySnapshot == null ||
+            !copySnapshot.exists ||
+            copySnapshot.data() == null) {
+          throw Exception(
+            'Physical book copy "${loanRecord.bookCopyId}" does not exist.',
+          );
+        }
+
+        final copyData = copySnapshot.data()!;
+        copy = BookCopy.fromFirestore(copyData, copySnapshot.id);
+
+        if (copy.isAvailable) {
+          throw Exception(
+            'Physical book copy "${copy.id}" is already marked as available.',
+          );
+        }
+
+        if (copy.bookId != loanRecord.bookId) {
+          throw Exception(
+            'Book copy "${copy.id}" does not match loan book "${loanRecord.bookId}".',
+          );
+        }
+      }
+
       // ── WRITES ──
       final now = DateTime.now();
       final effectiveReturnBranch =
@@ -327,17 +368,18 @@ class CirculationService {
 
       if (bookSnapshot.exists && bookSnapshot.data() != null) {
         final bookData = bookSnapshot.data()!;
+        final totalCopies = (bookData['totalCopies'] as num?)?.toInt() ?? 1;
         final currentAvailable =
             (bookData['availableCopies'] as num?)?.toInt() ?? 0;
-        final newAvailable = currentAvailable + 1;
+        final newAvailable = (currentAvailable + 1).clamp(0, totalCopies);
 
         transaction.update(bookRef, {
           'availableCopies': newAvailable,
-          'isAvailable': true,
+          'isAvailable': newAvailable > 0,
         });
       }
 
-      if (copyRef != null && copySnapshot != null && copySnapshot.exists) {
+      if (copyRef != null && copy != null) {
         final Map<String, dynamic> copyUpdates = {
           'status': BookCopy.statusAvailable,
         };
