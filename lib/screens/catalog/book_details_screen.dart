@@ -45,6 +45,7 @@ class BookDetailsScreen extends StatefulWidget {
 class _BookDetailsScreenState extends State<BookDetailsScreen> {
   late Book _currentBook;
   bool _isStaff = false;
+  bool _hasModified = false;
 
   @override
   void initState() {
@@ -100,6 +101,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     if (updated != null && mounted) {
       setState(() {
         _currentBook = updated;
+        _hasModified = true;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -137,6 +139,9 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: BackButton(
+          onPressed: () => Navigator.of(context).pop(_hasModified),
+        ),
         title: Text(
           _currentBook.title.isNotEmpty ? _currentBook.title : 'Book Details',
           maxLines: 1,
