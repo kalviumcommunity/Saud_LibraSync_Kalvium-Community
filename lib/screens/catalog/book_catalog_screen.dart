@@ -232,7 +232,7 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                         ),
                       );
 
-                      if (result == true && mounted) {
+                      if ((result == true || _isStaff) && mounted) {
                         _retryStream();
                       }
                     },

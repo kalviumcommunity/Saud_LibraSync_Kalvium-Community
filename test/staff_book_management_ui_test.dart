@@ -303,6 +303,81 @@ void main() {
 
       expect(find.textContaining('Authentication required'), findsOneWidget);
     });
+
+    testWidgets('Prevents duplicate submissions while save is in flight', (
+      WidgetTester tester,
+    ) async {
+      int createCalls = 0;
+      final completer = Completer<Book>();
+      final mockService = DelayBookService(
+        onCreate: (book) {
+          createCalls++;
+          return completer.future;
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: BookFormDialog(bookService: mockService)),
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('book_form_title_field')),
+        'Async Title',
+      );
+      await tester.enterText(
+        find.byKey(const Key('book_form_author_field')),
+        'Async Author',
+      );
+      await tester.enterText(
+        find.byKey(const Key('book_form_description_field')),
+        'Async Desc',
+      );
+
+      // First tap
+      await tester.tap(find.byKey(const Key('book_form_submit_btn')));
+      await tester.pump();
+
+      expect(createCalls, 1);
+      final button = tester.widget<FilledButton>(
+        find.byKey(const Key('book_form_submit_btn')),
+      );
+      expect(button.onPressed, isNull);
+
+      // Attempt second tap while saving
+      await tester.tap(find.byKey(const Key('book_form_submit_btn')));
+      await tester.pump();
+      expect(createCalls, 1);
+
+      completer.complete(sampleBook);
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('Validates invalid publication year and total copies', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(body: BookFormDialog(bookService: bookService)),
+        ),
+      );
+
+      await tester.enterText(
+        find.byKey(const Key('book_form_published_year_field')),
+        '3000',
+      );
+      await tester.enterText(
+        find.byKey(const Key('book_form_total_copies_field')),
+        '0',
+      );
+
+      await tester.tap(find.byKey(const Key('book_form_submit_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Invalid year'), findsOneWidget);
+      expect(find.text('Must be >= 1'), findsOneWidget);
+    });
   });
 
   group('DeleteBookConfirmationDialog Widget Tests', () {
@@ -384,6 +459,109 @@ void main() {
       expect(deletedResult, isTrue);
       expect(fakeFirestore.store.documents['books/${sampleBook.id}'], isNull);
     });
+
+    testWidgets('Canceling delete dialog pops with false and preserves book', (
+      WidgetTester tester,
+    ) async {
+      bool? deletedResult;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Builder(
+            builder: (context) => ElevatedButton(
+              onPressed: () async {
+                deletedResult = await DeleteBookConfirmationDialog.show(
+                  context,
+                  book: sampleBook,
+                  bookService: bookService,
+                );
+              },
+              child: const Text('Open Delete Dialog'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Open Delete Dialog'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('delete_book_cancel_btn')));
+      await tester.pumpAndSettle();
+
+      expect(deletedResult, isFalse);
+      expect(
+        fakeFirestore.store.documents['books/${sampleBook.id}'],
+        isNotNull,
+      );
+    });
+
+    testWidgets('Handles backend error gracefully in delete dialog', (
+      WidgetTester tester,
+    ) async {
+      final unauthenticatedAuth = FakeFirebaseAuth(currentUser: null);
+      final unauthService = BookService(
+        firestore: fakeFirestore,
+        auth: unauthenticatedAuth,
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DeleteBookConfirmationDialog(
+              book: sampleBook,
+              bookService: unauthService,
+            ),
+          ),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('delete_book_confirm_btn')));
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Authentication required'), findsOneWidget);
+    });
+
+    testWidgets('Prevents duplicate deletions while delete is in flight', (
+      WidgetTester tester,
+    ) async {
+      int deleteCalls = 0;
+      final completer = Completer<void>();
+      final mockService = DelayBookService(
+        onDelete: (id) {
+          deleteCalls++;
+          return completer.future;
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: DeleteBookConfirmationDialog(
+              book: sampleBook,
+              bookService: mockService,
+            ),
+          ),
+        ),
+      );
+
+      // First tap
+      await tester.tap(find.byKey(const Key('delete_book_confirm_btn')));
+      await tester.pump();
+
+      expect(deleteCalls, 1);
+      final confirmBtn = tester.widget<FilledButton>(
+        find.byKey(const Key('delete_book_confirm_btn')),
+      );
+      expect(confirmBtn.onPressed, isNull);
+
+      // Attempt second tap while in flight
+      await tester.tap(find.byKey(const Key('delete_book_confirm_btn')));
+      await tester.pump();
+      expect(deleteCalls, 1);
+
+      completer.complete();
+      await tester.pumpAndSettle();
+    });
   });
 
   group('Staff Catalog & Details Screen Integration Tests', () {
@@ -452,7 +630,68 @@ void main() {
         expect(find.byKey(const Key('book_details_delete_btn')), findsNothing);
       },
     );
+
+    testWidgets(
+      'Shows Add First Book button on empty catalog when isStaff is true',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BookCatalogScreen(
+              booksStream: Stream.value([]),
+              isStaff: true,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('catalog_empty_add_book_btn')),
+          findsOneWidget,
+        );
+        expect(find.text('Add First Book'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'Hides Add First Book button on empty catalog when isStaff is false',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: BookCatalogScreen(
+              booksStream: Stream.value([]),
+              isStaff: false,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const Key('catalog_empty_add_book_btn')),
+          findsNothing,
+        );
+        expect(find.text('Add First Book'), findsNothing);
+      },
+    );
   });
+}
+
+class DelayBookService extends Fake implements BookService {
+  DelayBookService({this.onCreate, this.onDelete});
+  final Future<Book> Function(Book)? onCreate;
+  final Future<void> Function(String)? onDelete;
+
+  @override
+  Future<Book> createBook(Book book, {bool enforceStaffRole = true}) async {
+    return onCreate != null ? await onCreate!(book) : book;
+  }
+
+  @override
+  Future<void> deleteBook(String id, {bool enforceStaffRole = true}) async {
+    if (onDelete != null) await onDelete!(id);
+  }
+
+  @override
+  Future<bool> isCurrentUserStaff() async => true;
 }
 
 // ── Fake Test Doubles ────────────────────────────────────────────────────────
