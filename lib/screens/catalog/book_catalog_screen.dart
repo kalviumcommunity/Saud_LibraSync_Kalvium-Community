@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
 import '../../services/book_service.dart';
+import '../../services/circulation_service.dart';
 import '../../widgets/book_card.dart';
 import '../../widgets/catalog/book_form_dialog.dart';
 import 'book_details_screen.dart';
@@ -12,12 +13,16 @@ class BookCatalogScreen extends StatefulWidget {
   const BookCatalogScreen({
     super.key,
     this.bookService,
+    this.circulationService,
     this.booksStream,
     this.isStaff,
   });
 
   /// Optional custom book service instance.
   final BookService? bookService;
+
+  /// Optional custom circulation service instance.
+  final CirculationService? circulationService;
 
   /// Optional custom stream of books (useful for testing or customized queries).
   final Stream<List<Book>>? booksStream;
@@ -227,6 +232,7 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                           builder: (context) => BookDetailsScreen(
                             book: book,
                             bookService: widget.bookService,
+                            circulationService: widget.circulationService,
                             isStaff: _isStaff,
                           ),
                         ),
