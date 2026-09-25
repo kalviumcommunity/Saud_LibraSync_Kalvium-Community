@@ -185,6 +185,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             MaterialPageRoute(
                               builder: (context) => BookCatalogScreen(
                                 bookService: widget.bookService,
+                                circulationService: widget.circulationService,
                                 isStaff: _isStaff,
                               ),
                             ),
