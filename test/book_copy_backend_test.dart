@@ -753,6 +753,14 @@ class FakeTransaction extends Fake implements Transaction {
     }
     return this;
   }
+
+  @override
+  Transaction delete(DocumentReference<Object?> documentSnapshot) {
+    _hasWritten = true;
+    final ref = documentSnapshot as FakeDocumentReference;
+    _store.documents.remove(ref._path);
+    return this;
+  }
 }
 
 class FakeDocumentSnapshot<T extends Object?> extends Fake
@@ -813,6 +821,36 @@ class FakeDocumentReference<T extends Object?> extends Fake
   Future<DocumentSnapshot<T>> get([GetOptions? options]) async {
     final data = _store.documents[_path];
     return FakeDocumentSnapshot<T>(id, data as T?);
+  }
+
+  @override
+  Future<void> set(T data, [SetOptions? options]) async {
+    if (data is Map<String, dynamic>) {
+      final existing = _store.documents[_path];
+      if (options?.merge == true && existing != null) {
+        final merged = Map<String, dynamic>.from(existing);
+        data.forEach((k, v) => merged[k] = v);
+        _store.documents[_path] = merged;
+      } else {
+        _store.documents[_path] = Map<String, dynamic>.from(data);
+      }
+    }
+  }
+
+  @override
+  Future<void> update(Map<Object, Object?> data) async {
+    final existing = _store.documents[_path];
+    if (existing == null) {
+      throw Exception('Document does not exist');
+    }
+    final merged = Map<String, dynamic>.from(existing);
+    data.forEach((k, v) => merged[k.toString()] = v);
+    _store.documents[_path] = merged;
+  }
+
+  @override
+  Future<void> delete() async {
+    _store.documents.remove(_path);
   }
 
   @override
