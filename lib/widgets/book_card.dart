@@ -20,125 +20,130 @@ class BookCard extends StatelessWidget {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: colorScheme.outlineVariant.withAlpha(80),
-          width: 1,
+    return Semantics(
+      button: true,
+      label:
+          '${book.title.isNotEmpty ? book.title : "Untitled Book"} by ${book.author.isNotEmpty ? book.author : "Unknown Author"}, ${book.isAvailable ? "Available" : "Checked Out"}',
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: colorScheme.outlineVariant.withAlpha(80),
+            width: 1,
+          ),
         ),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // ── Cover Image / Placeholder ─────────────────────────────
-              _BookCoverThumbnail(
-                imageUrl: book.imageUrl,
-                title: book.title,
-                id: book.id,
-              ),
-              const SizedBox(width: 14),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // ── Cover Image / Placeholder ─────────────────────────────
+                _BookCoverThumbnail(
+                  imageUrl: book.imageUrl,
+                  title: book.title,
+                  id: book.id,
+                ),
+                const SizedBox(width: 14),
 
-              // ── Book Details ──────────────────────────────────────────
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      book.title.isNotEmpty ? book.title : 'Untitled Book',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
+                // ── Book Details ──────────────────────────────────────────
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        book.title.isNotEmpty ? book.title : 'Untitled Book',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.onSurface,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
+                      const SizedBox(height: 4),
 
-                    // Author
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.person_outline_rounded,
-                          size: 15,
-                          color: colorScheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            book.author.isNotEmpty
-                                ? book.author
-                                : 'Unknown Author',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: colorScheme.onSurfaceVariant,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Description snippet
-                    if (book.description.isNotEmpty)
-                      Expanded(
-                        child: Text(
-                          book.description,
-                          style: theme.textTheme.bodySmall?.copyWith(
+                      // Author
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.person_outline_rounded,
+                            size: 15,
                             color: colorScheme.onSurfaceVariant,
                           ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                    const SizedBox(height: 4),
-
-                    // Availability & Category Row
-                    Wrap(
-                      spacing: 6,
-                      runSpacing: 4,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        _AvailabilityChip(
-                          isAvailable: book.isAvailable,
-                          availableCopies: book.availableCopies,
-                        ),
-                        if (book.category != null &&
-                            book.category!.trim().isNotEmpty)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: colorScheme.surfaceContainerHighest,
-                              borderRadius: BorderRadius.circular(6),
-                            ),
+                          const SizedBox(width: 4),
+                          Expanded(
                             child: Text(
-                              book.category!,
-                              style: theme.textTheme.labelSmall?.copyWith(
+                              book.author.isNotEmpty
+                                  ? book.author
+                                  : 'Unknown Author',
+                              style: theme.textTheme.bodyMedium?.copyWith(
                                 color: colorScheme.onSurfaceVariant,
+                                fontWeight: FontWeight.w500,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                      ],
-                    ),
-                  ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+
+                      // Description snippet
+                      if (book.description.isNotEmpty)
+                        Expanded(
+                          child: Text(
+                            book.description,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: colorScheme.onSurfaceVariant,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )
+                      else
+                        const Spacer(),
+                      const SizedBox(height: 4),
+
+                      // Availability & Category Row
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          _AvailabilityChip(
+                            isAvailable: book.isAvailable,
+                            availableCopies: book.availableCopies,
+                          ),
+                          if (book.category != null &&
+                              book.category!.trim().isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: colorScheme.surfaceContainerHighest,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                book.category!,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -162,8 +167,8 @@ class _BookCoverThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    const width = 72.0;
-    const height = 104.0;
+    const width = 76.0;
+    const height = 114.0;
 
     return Hero(
       tag: 'book_cover_$id',
@@ -278,18 +283,32 @@ class _AvailabilityChip extends StatelessWidget {
     final textColor = isReady ? Colors.green.shade800 : Colors.orange.shade800;
     final label = isReady ? 'Available' : 'Checked Out';
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: textColor.withAlpha(60), width: 0.8),
-      ),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: textColor,
-          fontWeight: FontWeight.bold,
+    return Semantics(
+      label: 'Availability status: $label',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: textColor.withAlpha(60), width: 0.8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isReady ? Icons.check_circle_rounded : Icons.info_outline_rounded,
+              size: 13,
+              color: textColor,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: textColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );

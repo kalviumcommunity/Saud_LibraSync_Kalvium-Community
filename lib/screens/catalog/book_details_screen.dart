@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
+import '../../models/book_copy.dart';
+import '../../models/loan_record.dart';
+import '../../services/auth_service.dart';
+import '../../services/book_copy_service.dart';
 import '../../services/book_service.dart';
 import '../../services/circulation_service.dart';
 import '../../widgets/catalog/book_form_dialog.dart';
 import '../../widgets/catalog/delete_book_dialog.dart';
 import '../../widgets/circulation/borrow_confirmation_sheet.dart';
+import '../../widgets/circulation/return_confirmation_dialog.dart';
 
 /// Screen displaying comprehensive details for a selected [Book], circulation actions,
 /// and staff management actions (editing details and deleting books).
@@ -15,9 +22,12 @@ class BookDetailsScreen extends StatefulWidget {
     required this.book,
     this.circulationService,
     this.onConfirmBorrow,
+    this.onConfirmReturn,
     this.bookService,
+    this.bookCopyService,
     this.isStaff,
     this.memberId,
+    this.activeLoan,
   });
 
   /// The book to display.
@@ -29,14 +39,23 @@ class BookDetailsScreen extends StatefulWidget {
   /// Optional custom borrow callback for testing or custom pipelines.
   final Future<void> Function()? onConfirmBorrow;
 
+  /// Optional custom return callback for testing or custom pipelines.
+  final Future<void> Function()? onConfirmReturn;
+
   /// Optional custom book service instance.
   final BookService? bookService;
+
+  /// Optional custom book copy service instance.
+  final BookCopyService? bookCopyService;
 
   /// Optional staff status override (useful for testing or direct permission pass-through).
   final bool? isStaff;
 
-  /// Optional member identifier for borrowing.
+  /// Optional member identifier for borrowing/returning.
   final String? memberId;
+
+  /// Optional active loan for this book by the current member.
+  final LoanRecord? activeLoan;
 
   @override
   State<BookDetailsScreen> createState() => _BookDetailsScreenState();
@@ -46,20 +65,106 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   late Book _currentBook;
   bool _isStaff = false;
   bool _hasModified = false;
+  LoanRecord? _activeLoan;
+
+  StreamSubscription<Book?>? _bookSubscription;
+  StreamSubscription<List<LoanRecord>>? _loanSubscription;
 
   @override
   void initState() {
     super.initState();
     _currentBook = widget.book;
+    _activeLoan = widget.activeLoan;
     _checkStaffStatus();
+    _initBookStream();
+    _initActiveLoanStream();
   }
 
   @override
   void didUpdateWidget(covariant BookDetailsScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.book != oldWidget.book) {
+      _currentBook = widget.book;
+    }
+    if (widget.activeLoan != oldWidget.activeLoan) {
+      _activeLoan = widget.activeLoan;
+    }
     if (widget.isStaff != oldWidget.isStaff ||
         widget.bookService != oldWidget.bookService) {
       _checkStaffStatus();
+    }
+    if (widget.bookService != oldWidget.bookService ||
+        widget.book.id != oldWidget.book.id) {
+      _initBookStream();
+    }
+    if (widget.circulationService != oldWidget.circulationService ||
+        widget.memberId != oldWidget.memberId ||
+        widget.book.id != oldWidget.book.id) {
+      _initActiveLoanStream();
+    }
+  }
+
+  @override
+  void dispose() {
+    _bookSubscription?.cancel();
+    _loanSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _initBookStream() {
+    _bookSubscription?.cancel();
+    if (widget.bookService != null && _currentBook.id.isNotEmpty) {
+      try {
+        _bookSubscription = widget.bookService!
+            .streamBookById(_currentBook.id)
+            .listen((updated) {
+              if (mounted && updated != null) {
+                setState(() {
+                  _currentBook = updated;
+                });
+              }
+            });
+      } catch (_) {
+        // Fall back gracefully if uninitialized or offline
+      }
+    }
+  }
+
+  void _initActiveLoanStream() {
+    if (widget.activeLoan != null) {
+      _activeLoan = widget.activeLoan;
+      return;
+    }
+    _loanSubscription?.cancel();
+    if (widget.circulationService != null && _currentBook.id.isNotEmpty) {
+      try {
+        String? memberId = widget.memberId;
+        if (memberId == null || memberId.isEmpty) {
+          try {
+            memberId = AuthService().currentUser?.uid;
+          } catch (_) {}
+        }
+        if (memberId != null && memberId.isNotEmpty) {
+          _loanSubscription = widget.circulationService!
+              .streamActiveLoans(memberId: memberId)
+              .listen((loans) {
+                if (mounted) {
+                  LoanRecord? match;
+                  for (final l in loans) {
+                    if (l.bookId == _currentBook.id) {
+                      match = l;
+                      break;
+                    }
+                  }
+                  setState(() {
+                    _activeLoan = match;
+                  });
+                }
+              });
+        }
+      } catch (_) {
+        // Fall back gracefully
+      }
     }
   }
 
@@ -85,9 +190,40 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     );
 
     // Propagate a successful borrow to the previous route (e.g.
-    // MemberCirculationScreen) so it can refresh the active loans stream.
+    // MemberCirculationScreen or BookCatalogScreen) so it can refresh.
     if (borrowed == true && mounted) {
       Navigator.of(context).pop(true);
+    }
+  }
+
+  Future<void> _handleReturn() async {
+    if (_activeLoan != null) {
+      final returned = await ReturnConfirmationDialog.show(
+        context,
+        loan: _activeLoan!,
+        onConfirmReturn: widget.onConfirmReturn,
+        circulationService: widget.circulationService,
+      );
+
+      if (returned == true && mounted) {
+        Navigator.of(context).pop(true);
+      }
+    } else if (widget.onConfirmReturn != null) {
+      try {
+        await widget.onConfirmReturn!();
+        if (mounted) {
+          Navigator.of(context).pop(true);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString().replaceAll('Exception: ', '')),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
     }
   }
 
@@ -136,6 +272,7 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
     final colorScheme = theme.colorScheme;
     final isReady =
         _currentBook.isAvailable && _currentBook.availableCopies > 0;
+    final hasActiveLoan = _activeLoan != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -187,9 +324,11 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                               child: _HeaderInfo(
                                 book: _currentBook,
                                 isReady: isReady,
+                                hasActiveLoan: hasActiveLoan,
                                 onBorrowTap: isReady
                                     ? () => _openBorrowSheet()
                                     : null,
+                                onReturnTap: _handleReturn,
                               ),
                             ),
                           ],
@@ -203,10 +342,12 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                             _HeaderInfo(
                               book: _currentBook,
                               isReady: isReady,
+                              hasActiveLoan: hasActiveLoan,
                               alignCenter: true,
                               onBorrowTap: isReady
                                   ? () => _openBorrowSheet()
                                   : null,
+                              onReturnTap: _handleReturn,
                             ),
                           ],
                         );
@@ -227,6 +368,37 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
                   const SizedBox(height: 12),
                   _BookMetadataSection(book: _currentBook),
                   const SizedBox(height: 24),
+
+                  // ── Physical Copies Inventory (if service supported) ───
+                  if (widget.bookCopyService != null) ...[
+                    StreamBuilder<List<BookCopy>>(
+                      stream: widget.bookCopyService!.streamCopiesForBook(
+                        _currentBook.id,
+                      ),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
+                        final copies = snapshot.data!;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Physical Copies (${copies.length})',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            ...copies.map(
+                              (copy) => _PhysicalCopyCard(copy: copy),
+                            ),
+                            const SizedBox(height: 24),
+                          ],
+                        );
+                      },
+                    ),
+                  ],
 
                   // ── Description Section ───────────────────────────────
                   Text(
@@ -376,19 +548,23 @@ class _LargePlaceholder extends StatelessWidget {
   }
 }
 
-/// Header text information containing Title, Author, Status Badge, and Borrow Action.
+/// Header text information containing Title, Author, Status Badge, and Member Actions (Borrow / Return).
 class _HeaderInfo extends StatelessWidget {
   const _HeaderInfo({
     required this.book,
     required this.isReady,
+    this.hasActiveLoan = false,
     this.alignCenter = false,
     this.onBorrowTap,
+    this.onReturnTap,
   });
 
   final Book book;
   final bool isReady;
+  final bool hasActiveLoan;
   final bool alignCenter;
   final VoidCallback? onBorrowTap;
+  final VoidCallback? onReturnTap;
 
   @override
   Widget build(BuildContext context) {
@@ -439,46 +615,89 @@ class _HeaderInfo extends StatelessWidget {
         const SizedBox(height: 14),
 
         // Status Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isReady
-                ? Colors.green.withAlpha(30)
-                : Colors.orange.withAlpha(30),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: (isReady ? Colors.green : Colors.orange).withAlpha(100),
+        if (hasActiveLoan)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: colorScheme.primaryContainer.withAlpha(120),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorScheme.primary.withAlpha(100)),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                isReady
-                    ? Icons.check_circle_rounded
-                    : Icons.info_outline_rounded,
-                size: 16,
-                color: isReady ? Colors.green.shade800 : Colors.orange.shade800,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.bookmark_added_rounded,
+                  size: 16,
+                  color: colorScheme.primary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Currently Borrowed by You',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isReady
+                  ? Colors.green.withAlpha(30)
+                  : Colors.orange.withAlpha(30),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: (isReady ? Colors.green : Colors.orange).withAlpha(100),
               ),
-              const SizedBox(width: 6),
-              Text(
-                isReady
-                    ? 'Available (${book.availableCopies} of ${book.totalCopies} copies)'
-                    : 'Currently Unavailable (0 of ${book.totalCopies} copies)',
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  isReady
+                      ? Icons.check_circle_rounded
+                      : Icons.info_outline_rounded,
+                  size: 16,
                   color: isReady
                       ? Colors.green.shade800
                       : Colors.orange.shade800,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  isReady
+                      ? 'Available (${book.availableCopies} of ${book.totalCopies} copies)'
+                      : 'Currently Unavailable (0 of ${book.totalCopies} copies)',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: isReady
+                        ? Colors.green.shade800
+                        : Colors.orange.shade800,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
         const SizedBox(height: 16),
 
-        // ── Prominent Borrow Book Action ─────────────────────────────
-        if (isReady)
+        // ── Action Buttons ───────────────────────────────────────────
+        if (hasActiveLoan)
+          FilledButton.icon(
+            key: const Key('book_details_return_btn'),
+            onPressed: onReturnTap,
+            icon: const Icon(Icons.assignment_return_rounded, size: 20),
+            label: const Text('Return Book'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          )
+        else if (isReady)
           FilledButton.icon(
             key: const Key('book_details_borrow_btn'),
             onPressed: onBorrowTap,
@@ -509,7 +728,7 @@ class _HeaderInfo extends StatelessWidget {
   }
 }
 
-/// Metadata details list (ISBN, Category, Published Year).
+/// Metadata details list (ISBN, Category, Published Year, Copies).
 class _BookMetadataSection extends StatelessWidget {
   const _BookMetadataSection({required this.book});
 
@@ -543,6 +762,11 @@ class _BookMetadataSection extends StatelessWidget {
           icon: Icons.inventory_2_outlined,
           label: 'Total Copies',
           value: '${book.totalCopies}',
+        ),
+        _MetaCard(
+          icon: Icons.event_available_rounded,
+          label: 'Available Copies',
+          value: '${book.availableCopies}',
         ),
       ],
     );
@@ -597,6 +821,106 @@ class _MetaCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Physical copy card displayed when copy inventory is active.
+class _PhysicalCopyCard extends StatelessWidget {
+  const _PhysicalCopyCard({required this.copy});
+
+  final BookCopy copy;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isAvailable = copy.isAvailable;
+
+    Color badgeBg;
+    Color badgeText;
+    switch (copy.status.toLowerCase()) {
+      case BookCopy.statusAvailable:
+        badgeBg = Colors.green.withAlpha(25);
+        badgeText = Colors.green.shade800;
+        break;
+      case BookCopy.statusBorrowed:
+        badgeBg = Colors.orange.withAlpha(25);
+        badgeText = Colors.orange.shade800;
+        break;
+      case BookCopy.statusMaintenance:
+        badgeBg = Colors.blue.withAlpha(25);
+        badgeText = Colors.blue.shade800;
+        break;
+      case BookCopy.statusLost:
+      default:
+        badgeBg = colorScheme.errorContainer.withAlpha(120);
+        badgeText = colorScheme.error;
+        break;
+    }
+
+    return Card(
+      elevation: 0,
+      color: colorScheme.surfaceContainerLow,
+      margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: colorScheme.outlineVariant.withAlpha(60)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
+          children: [
+            Icon(
+              Icons.book_rounded,
+              size: 20,
+              color: isAvailable
+                  ? colorScheme.primary
+                  : colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    copy.barcode != null && copy.barcode!.isNotEmpty
+                        ? 'Barcode: ${copy.barcode}'
+                        : 'Copy ID: ${copy.id}',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Branch: ${copy.branchId}${copy.condition != null ? ' • Condition: ${copy.condition}' : ''}',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: badgeBg,
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: badgeText.withAlpha(80), width: 0.8),
+              ),
+              child: Text(
+                copy.status.isNotEmpty
+                    ? copy.status[0].toUpperCase() + copy.status.substring(1)
+                    : 'Unknown',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: badgeText,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

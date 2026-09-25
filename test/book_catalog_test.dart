@@ -149,6 +149,28 @@ void main() {
       await tester.pump();
       expect(tapped, isTrue);
     });
+
+    testWidgets(
+      'BookCard renders availability status icon and accessibility semantics',
+      (WidgetTester tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(body: BookCard(book: sampleBook1)),
+          ),
+        );
+
+        // Verify accessibility status icon is present
+        expect(find.byIcon(Icons.check_circle_rounded), findsOneWidget);
+
+        // Verify Semantics wrapper contains title, author, and status
+        expect(
+          find.bySemanticsLabel(
+            RegExp('Clean Architecture.*Robert C. Martin.*Available'),
+          ),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('BookDetailsScreen Widget Tests', () {
@@ -187,6 +209,17 @@ void main() {
         find.text('Currently Unavailable (0 of 2 copies)'),
         findsOneWidget,
       );
+    });
+
+    testWidgets('Renders Available Copies metadata card', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(home: BookDetailsScreen(book: sampleBook1)),
+      );
+
+      expect(find.text('Available Copies'), findsOneWidget);
+      expect(find.text('2'), findsWidgets);
     });
   });
 
@@ -298,6 +331,50 @@ void main() {
       expect(find.text('Found 1 matching books'), findsOneWidget);
       expect(find.text('Clean Architecture'), findsWidgets);
       expect(find.text('Flutter in Action'), findsNothing);
+    });
+
+    testWidgets('Filters books by category search query', (
+      WidgetTester tester,
+    ) async {
+      final books = [sampleBook1, sampleBook2, sampleBook3];
+
+      await tester.pumpWidget(
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
+      );
+      await tester.pump();
+
+      // Enter search query for category "Mobile Development"
+      await tester.enterText(
+        find.byKey(const Key('catalog_search_field')),
+        'Mobile Development',
+      );
+      await tester.pump();
+
+      expect(find.text('Found 1 matching books'), findsOneWidget);
+      expect(find.text('Flutter in Action'), findsWidgets);
+      expect(find.text('Clean Architecture'), findsNothing);
+    });
+
+    testWidgets('Filters books by ISBN search query', (
+      WidgetTester tester,
+    ) async {
+      final books = [sampleBook1, sampleBook2, sampleBook3];
+
+      await tester.pumpWidget(
+        MaterialApp(home: BookCatalogScreen(booksStream: Stream.value(books))),
+      );
+      await tester.pump();
+
+      // Enter search query for ISBN of sampleBook1
+      await tester.enterText(
+        find.byKey(const Key('catalog_search_field')),
+        '978-0134494166',
+      );
+      await tester.pump();
+
+      expect(find.text('Found 1 matching books'), findsOneWidget);
+      expect(find.text('Clean Architecture'), findsWidgets);
+      expect(find.text('Design Patterns'), findsNothing);
     });
 
     testWidgets('Shows empty search state and clears search on button tap', (

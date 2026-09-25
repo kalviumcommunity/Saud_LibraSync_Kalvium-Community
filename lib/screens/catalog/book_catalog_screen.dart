@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
+import '../../services/book_copy_service.dart';
 import '../../services/book_service.dart';
 import '../../services/circulation_service.dart';
 import '../../widgets/book_card.dart';
@@ -14,6 +15,7 @@ class BookCatalogScreen extends StatefulWidget {
     super.key,
     this.bookService,
     this.circulationService,
+    this.bookCopyService,
     this.booksStream,
     this.isStaff,
   });
@@ -23,6 +25,9 @@ class BookCatalogScreen extends StatefulWidget {
 
   /// Optional custom circulation service instance.
   final CirculationService? circulationService;
+
+  /// Optional custom book copy service instance.
+  final BookCopyService? bookCopyService;
 
   /// Optional custom stream of books (useful for testing or customized queries).
   final Stream<List<Book>>? booksStream;
@@ -139,7 +144,11 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
     return books.where((book) {
       final matchesTitle = book.title.toLowerCase().contains(lowerQuery);
       final matchesAuthor = book.author.toLowerCase().contains(lowerQuery);
-      return matchesTitle || matchesAuthor;
+      final matchesCategory =
+          book.category?.toLowerCase().contains(lowerQuery) ?? false;
+      final matchesIsbn =
+          book.isbn?.toLowerCase().contains(lowerQuery) ?? false;
+      return matchesTitle || matchesAuthor || matchesCategory || matchesIsbn;
     }).toList();
   }
 
@@ -233,13 +242,16 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
                             book: book,
                             bookService: widget.bookService,
                             circulationService: widget.circulationService,
+                            bookCopyService: widget.bookCopyService,
                             isStaff: _isStaff,
                           ),
                         ),
                       );
 
                       if ((result == true || _isStaff) && mounted) {
-                        _retryStream();
+                        if (widget.booksStream == null) {
+                          _retryStream();
+                        }
                       }
                     },
                   );
@@ -262,7 +274,7 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
             key: const Key('catalog_search_field'),
             controller: _searchController,
             decoration: InputDecoration(
-              hintText: 'Search by title or author...',
+              hintText: 'Search by title, author, category, or ISBN...',
               prefixIcon: const Icon(Icons.search_rounded),
               suffixIcon: _searchQuery.isNotEmpty
                   ? IconButton(
@@ -319,6 +331,7 @@ class _CatalogGridView extends StatelessWidget {
             } else {
               crossAxisCount = 1;
             }
+            const double mainAxisExtent = 168;
 
             return CustomScrollView(
               slivers: [
@@ -351,7 +364,7 @@ class _CatalogGridView extends StatelessWidget {
                       crossAxisCount: crossAxisCount,
                       mainAxisSpacing: 12,
                       crossAxisSpacing: 12,
-                      mainAxisExtent: 168,
+                      mainAxisExtent: mainAxisExtent,
                     ),
                     delegate: SliverChildBuilderDelegate((context, index) {
                       final book = books[index];
