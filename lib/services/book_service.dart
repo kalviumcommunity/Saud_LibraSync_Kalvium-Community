@@ -178,6 +178,23 @@ class BookService {
     return bookToSave;
   }
 
+  /// Creates or updates a book in the catalog idempotently.
+  Future<Book> upsertBook(Book book, {bool enforceStaffRole = false}) async {
+    book.validate();
+    if (enforceStaffRole) {
+      await _verifyStaffAuthorization();
+    }
+    final docRef = book.id.trim().isNotEmpty
+        ? _booksCollection.doc(book.id.trim())
+        : _booksCollection.doc();
+    final bookToSave = book.copyWith(
+      id: docRef.id,
+      isAvailable: book.availableCopies > 0,
+    );
+    await docRef.set(bookToSave.toFirestore(), SetOptions(merge: true));
+    return bookToSave;
+  }
+
   /// Deletes a book from the catalog by its [id] after verifying staff authorization.
   Future<void> deleteBook(String id, {bool enforceStaffRole = true}) async {
     final bookId = id.trim();

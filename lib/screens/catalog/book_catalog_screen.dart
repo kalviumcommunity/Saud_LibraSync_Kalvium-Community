@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/book.dart';
+import '../../repositories/book_repository.dart';
 import '../../services/book_copy_service.dart';
 import '../../services/book_service.dart';
 import '../../services/circulation_service.dart';
@@ -83,9 +84,10 @@ class _BookCatalogScreenState extends State<BookCatalogScreen> {
   void _initStream() {
     if (widget.booksStream != null) {
       _stream = widget.booksStream!;
+    } else if (widget.bookService != null) {
+      _stream = widget.bookService!.streamBooks();
     } else {
-      final service = widget.bookService ?? BookService();
-      _stream = service.streamBooks();
+      _stream = BookRepository().streamBooks();
     }
   }
 

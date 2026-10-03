@@ -103,7 +103,8 @@ service cloud.firestore {
         isStaff()
       );
 
-      // Members can only update their own loan from 'active' to 'returned'.
+      // Members can only update their own loan from 'active' to 'returned',
+      // or update reading progress (progressPercent, currentChapter) on their active loans.
       // Members CANNOT modify another user's loan. Staff can update any loan record.
       // Original borrowedBranchId and bookCopyId are immutable once created.
       allow update: if isStaff() || (
@@ -113,12 +114,43 @@ service cloud.firestore {
         request.resource.data.bookId == resource.data.bookId &&
         (!('borrowedBranchId' in resource.data) || request.resource.data.borrowedBranchId == resource.data.borrowedBranchId) &&
         (!('bookCopyId' in resource.data) || request.resource.data.bookCopyId == resource.data.bookCopyId) &&
-        resource.data.status == 'active' &&
-        request.resource.data.status == 'returned' &&
-        request.resource.data.returnDate != null
+        (
+          (resource.data.status == 'active' &&
+           request.resource.data.status == 'returned' &&
+           request.resource.data.returnDate != null)
+          ||
+          (resource.data.status == 'active' &&
+           request.resource.data.status == 'active')
+        )
       );
 
       // Only staff can delete or archive loan records
+      allow delete: if isStaff();
+    }
+
+    // ── Holds Collection (/holds/{holdId}) ────────────────────────────
+    match /holds/{holdId} {
+      // Members can read their own holds; staff can read all holds
+      allow read: if isAuthenticated() && (
+        resource.data.memberId == request.auth.uid || isStaff()
+      );
+
+      // Members can place a hold for themselves with 'pending' status; staff can create for anyone
+      allow create: if isAuthenticated() && (
+        (request.resource.data.memberId == request.auth.uid && request.resource.data.status == 'pending') ||
+        isStaff()
+      );
+
+      // Members can cancel their own pending/ready hold; staff can update status to any valid state
+      allow update: if isStaff() || (
+        isAuthenticated() &&
+        resource.data.memberId == request.auth.uid &&
+        request.resource.data.memberId == resource.data.memberId &&
+        request.resource.data.bookId == resource.data.bookId &&
+        request.resource.data.status == 'cancelled'
+      );
+
+      // Only staff can delete holds
       allow delete: if isStaff();
     }
 

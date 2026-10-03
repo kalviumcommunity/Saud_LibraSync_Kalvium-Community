@@ -72,4 +72,16 @@ class BranchService {
       return Stream.error(e);
     }
   }
+
+  /// Creates or updates a branch idempotently with a deterministic or generated ID.
+  Future<Branch> upsertBranch(Branch branch) async {
+    branch.validate();
+    final docRef = branch.id.trim().isNotEmpty
+        ? _branchesCollection.doc(branch.id.trim())
+        : _branchesCollection.doc();
+    final branchToSave = branch.copyWith(id: docRef.id);
+    await docRef.set(branchToSave.toFirestore(), SetOptions(merge: true));
+    return branchToSave;
+  }
 }
+

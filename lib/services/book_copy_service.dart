@@ -423,6 +423,25 @@ class BookCopyService {
     bool enforceStaffRole = true,
   }) => createCopy(copy, enforceStaffRole: enforceStaffRole);
 
+  /// Creates or updates a physical book copy idempotently with a deterministic or generated ID.
+  Future<BookCopy> upsertCopy(
+    BookCopy copy, {
+    bool enforceStaffRole = false,
+  }) async {
+    if (enforceStaffRole) {
+      await _verifyStaffAuthorization();
+    }
+    copy.validate();
+
+    final docRef = copy.id.trim().isNotEmpty
+        ? _bookCopiesCollection.doc(copy.id.trim())
+        : _bookCopiesCollection.doc();
+
+    final copyToSave = copy.copyWith(id: docRef.id);
+    await docRef.set(copyToSave.toFirestore(), SetOptions(merge: true));
+    return copyToSave;
+  }
+
   /// Updates an existing physical book copy after validating authorization,
   /// active loan state, and referenced book and branch existence.
   ///

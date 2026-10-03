@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../models/book_copy.dart';
 import '../../models/loan_record.dart';
+import '../../repositories/book_repository.dart';
 import '../../services/auth_service.dart';
 import '../../services/book_copy_service.dart';
 import '../../services/book_service.dart';
@@ -13,6 +14,7 @@ import '../../widgets/catalog/book_form_dialog.dart';
 import '../../widgets/catalog/delete_book_dialog.dart';
 import '../../widgets/circulation/borrow_confirmation_sheet.dart';
 import '../../widgets/circulation/return_confirmation_dialog.dart';
+import '../circulation/borrow_flow_screen.dart';
 
 /// Screen displaying comprehensive details for a selected [Book], circulation actions,
 /// and staff management actions (editing details and deleting books).
@@ -113,20 +115,20 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
 
   void _initBookStream() {
     _bookSubscription?.cancel();
-    if (widget.bookService != null && _currentBook.id.isNotEmpty) {
-      try {
-        _bookSubscription = widget.bookService!
-            .streamBookById(_currentBook.id)
-            .listen((updated) {
-              if (mounted && updated != null) {
-                setState(() {
-                  _currentBook = updated;
-                });
-              }
-            });
-      } catch (_) {
-        // Fall back gracefully if uninitialized or offline
-      }
+    if (_currentBook.id.isEmpty) return;
+    final stream = widget.bookService != null
+        ? widget.bookService!.streamBookById(_currentBook.id)
+        : BookRepository().streamBookById(_currentBook.id);
+    try {
+      _bookSubscription = stream.listen((updated) {
+        if (mounted && updated != null) {
+          setState(() {
+            _currentBook = updated;
+          });
+        }
+      });
+    } catch (_) {
+      // Fall back gracefully if uninitialized or offline
     }
   }
 
@@ -181,6 +183,18 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
   }
 
   Future<void> _openBorrowSheet() async {
+    if (_isStaff && widget.onConfirmBorrow == null) {
+      final res = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          builder: (_) => BorrowFlowScreen(initialBook: _currentBook),
+        ),
+      );
+      if (res == true && mounted) {
+        Navigator.of(context).pop(true);
+      }
+      return;
+    }
+
     final borrowed = await BorrowConfirmationSheet.show(
       context,
       book: _currentBook,
@@ -701,13 +715,16 @@ class _HeaderInfo extends StatelessWidget {
           FilledButton.icon(
             key: const Key('book_details_borrow_btn'),
             onPressed: onBorrowTap,
-            icon: const Icon(Icons.bookmark_add_rounded, size: 20),
+            icon: const Icon(Icons.arrow_forward_rounded, size: 20),
             label: const Text('Borrow Book'),
             style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              backgroundColor: const Color(0xFFFF5622),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(28),
               ),
+              textStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
           )
         else

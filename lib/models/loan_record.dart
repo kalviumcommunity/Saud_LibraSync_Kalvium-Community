@@ -17,6 +17,9 @@ class LoanRecord {
     this.borrowedBranchId,
     this.returnBranchId,
     this.bookCopyId,
+    this.fineAmount,
+    this.progressPercent,
+    this.currentChapter,
   });
 
   /// Unique loan record identifier.
@@ -61,6 +64,15 @@ class LoanRecord {
   /// Identifier of the specific physical book copy borrowed, if assigned.
   final String? bookCopyId;
 
+  /// Fine amount assessed on overdue or returned loan.
+  final double? fineAmount;
+
+  /// Reading progress percentage (0 - 100).
+  final int? progressPercent;
+
+  /// Name of the current chapter or section being read (e.g. 'Ch. 18').
+  final String? currentChapter;
+
   /// Whether the loan is currently overdue.
   bool get isOverdue => returnDate == null && DateTime.now().isAfter(dueDate);
 
@@ -100,6 +112,9 @@ class LoanRecord {
           data['borrowedBranchId'] as String? ?? data['branchId'] as String?,
       returnBranchId: data['returnBranchId'] as String?,
       bookCopyId: data['bookCopyId'] as String? ?? data['copyId'] as String?,
+      fineAmount: (data['fineAmount'] as num?)?.toDouble(),
+      progressPercent: (data['progressPercent'] as num?)?.toInt(),
+      currentChapter: data['currentChapter'] as String?,
     );
   }
 
@@ -122,6 +137,10 @@ class LoanRecord {
         'returnBranchId': returnBranchId!.trim(),
       if (bookCopyId != null && bookCopyId!.trim().isNotEmpty)
         'bookCopyId': bookCopyId!.trim(),
+      if (fineAmount != null) 'fineAmount': fineAmount,
+      if (progressPercent != null) 'progressPercent': progressPercent,
+      if (currentChapter != null && currentChapter!.trim().isNotEmpty)
+        'currentChapter': currentChapter!.trim(),
     };
   }
 
@@ -141,6 +160,9 @@ class LoanRecord {
     String? borrowedBranchId,
     String? returnBranchId,
     String? bookCopyId,
+    double? fineAmount,
+    int? progressPercent,
+    String? currentChapter,
   }) {
     return LoanRecord(
       id: id ?? this.id,
@@ -157,6 +179,9 @@ class LoanRecord {
       borrowedBranchId: borrowedBranchId ?? this.borrowedBranchId,
       returnBranchId: returnBranchId ?? this.returnBranchId,
       bookCopyId: bookCopyId ?? this.bookCopyId,
+      fineAmount: fineAmount ?? this.fineAmount,
+      progressPercent: progressPercent ?? this.progressPercent,
+      currentChapter: currentChapter ?? this.currentChapter,
     );
   }
 
@@ -178,7 +203,10 @@ class LoanRecord {
           status == other.status &&
           borrowedBranchId == other.borrowedBranchId &&
           returnBranchId == other.returnBranchId &&
-          bookCopyId == other.bookCopyId;
+          bookCopyId == other.bookCopyId &&
+          fineAmount == other.fineAmount &&
+          progressPercent == other.progressPercent &&
+          currentChapter == other.currentChapter;
 
   @override
   int get hashCode => Object.hash(
@@ -196,10 +224,13 @@ class LoanRecord {
     borrowedBranchId,
     returnBranchId,
     bookCopyId,
+    fineAmount,
+    progressPercent,
+    currentChapter,
   );
 
   @override
   String toString() {
-    return 'LoanRecord(id: $id, bookTitle: $bookTitle, status: $status, borrowedBranch: $borrowedBranchId, returnBranch: $returnBranchId)';
+    return 'LoanRecord(id: $id, bookTitle: $bookTitle, status: $status, fineAmount: $fineAmount, progress: $progressPercent%)';
   }
 }

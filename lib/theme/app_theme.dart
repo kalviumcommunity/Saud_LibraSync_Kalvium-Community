@@ -1,68 +1,94 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
-/// Centralized theme configuration for LibraSync.
-///
-/// All colors, typography, and component styles are defined here so they
-/// can be referenced consistently throughout the application.
+/// Centralized theme configuration for LibraSync matching the mockup aesthetics.
 class AppTheme {
-  AppTheme._(); // Prevent instantiation.
+  AppTheme._();
 
-  // ─── Brand Colors ───────────────────────────────────────────────────
-  static const Color _primarySeed = Color(0xFF1565C0); // Deep library blue
-
-  // ─── Light Theme ────────────────────────────────────────────────────
   static final ThemeData lightTheme = ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
-    colorSchemeSeed: _primarySeed,
-
-    // AppBar
-    appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
-
-    // Cards
+    scaffoldBackgroundColor: AppColors.scaffoldBackground,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.primaryPurple,
+      primary: AppColors.primaryPurple,
+      secondary: AppColors.primaryOrange,
+      surface: AppColors.surfaceWhite,
+      surfaceContainerLowest: AppColors.surfaceWhite,
+      onPrimary: Colors.white,
+      onSecondary: Colors.white,
+      onSurface: AppColors.textPrimary,
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: AppColors.scaffoldBackground,
+      foregroundColor: AppColors.textPrimary,
+      elevation: 0,
+      centerTitle: false,
+      titleTextStyle: TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 22,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
     cardTheme: CardThemeData(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
+      color: AppColors.surfaceWhite,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: const BorderSide(color: AppColors.cardBorder, width: 1),
+      ),
+      margin: EdgeInsets.zero,
     ),
-
-    // Floating Action Button
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      elevation: 2,
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        backgroundColor: AppColors.primaryOrange,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     ),
-
-    // Input fields (for future use)
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: AppColors.primaryPurple,
+        side: const BorderSide(color: AppColors.cardBorder, width: 1.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(28),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+        textStyle: const TextStyle(
+          fontSize: 16,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      fillColor: Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.cardBorder, width: 1),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.cardBorder, width: 1),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: AppColors.primaryPurple, width: 2),
+      ),
+      hintStyle: const TextStyle(
+        color: AppColors.textMuted,
+        fontSize: 14,
+      ),
     ),
   );
 
-  // ─── Dark Theme ─────────────────────────────────────────────────────
-  static final ThemeData darkTheme = ThemeData(
-    useMaterial3: true,
-    brightness: Brightness.dark,
-    colorSchemeSeed: _primarySeed,
-
-    // AppBar
-    appBarTheme: const AppBarTheme(centerTitle: false, elevation: 0),
-
-    // Cards
-    cardTheme: CardThemeData(
-      elevation: 1,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      clipBehavior: Clip.antiAlias,
-    ),
-
-    // Floating Action Button
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      elevation: 2,
-    ),
-
-    // Input fields (for future use)
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-    ),
-  );
+  static final ThemeData darkTheme = lightTheme; // Primary theme requested is styled light shell with dark auth screen
 }
