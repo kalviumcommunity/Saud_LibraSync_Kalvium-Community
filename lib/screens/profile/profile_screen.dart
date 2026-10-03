@@ -381,38 +381,41 @@ class ProfileScreen extends ConsumerWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.cardBorder),
       ),
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(12),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: ListTile(
+          onTap: onTap,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: iconBg,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-          child: Icon(icon, color: iconColor, size: 22),
-        ),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: titleColor ?? AppColors.textPrimary,
+          title: Text(
+            title,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: titleColor ?? AppColors.textPrimary,
+            ),
           ),
+          subtitle: subtitle != null
+              ? Text(
+                  subtitle,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                )
+              : null,
+          trailing: showArrow
+              ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20)
+              : const Icon(Icons.arrow_forward_rounded, color: AppColors.primaryOrange, size: 18),
         ),
-        subtitle: subtitle != null
-            ? Text(
-                subtitle,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              )
-            : null,
-        trailing: showArrow
-            ? const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 20)
-            : const Icon(Icons.arrow_forward_rounded, color: AppColors.primaryOrange, size: 18),
       ),
     );
   }

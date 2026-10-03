@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/branch.dart';
 import '../repositories/branch_repository.dart';
+import 'auth_providers.dart';
 
 final branchRepositoryProvider = Provider<BranchRepository>((ref) {
-  return BranchRepository();
+  return BranchRepository(firestore: ref.watch(firestoreProvider));
 });
 
 final branchesStreamProvider = StreamProvider<List<Branch>>((ref) {

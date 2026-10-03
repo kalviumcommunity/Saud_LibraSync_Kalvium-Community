@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/branch.dart';
+import '../../repositories/branch_repository.dart';
 import '../../services/branch_service.dart';
 import '../../widgets/branches/branch_card.dart';
 
@@ -34,9 +35,10 @@ class _BranchesScreenState extends State<BranchesScreen> {
   void _initStream() {
     if (widget.branchesStream != null) {
       _stream = widget.branchesStream!;
+    } else if (widget.branchService != null) {
+      _stream = widget.branchService!.streamBranches();
     } else {
-      final service = widget.branchService ?? BranchService();
-      _stream = service.streamBranches();
+      _stream = BranchRepository().streamBranches();
     }
   }
 

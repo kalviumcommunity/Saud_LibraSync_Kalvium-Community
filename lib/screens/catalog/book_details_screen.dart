@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../models/book.dart';
 import '../../models/book_copy.dart';
 import '../../models/loan_record.dart';
+import '../../repositories/book_repository.dart';
 import '../../services/auth_service.dart';
 import '../../services/book_copy_service.dart';
 import '../../services/book_service.dart';
@@ -114,20 +115,20 @@ class _BookDetailsScreenState extends State<BookDetailsScreen> {
 
   void _initBookStream() {
     _bookSubscription?.cancel();
-    if (widget.bookService != null && _currentBook.id.isNotEmpty) {
-      try {
-        _bookSubscription = widget.bookService!
-            .streamBookById(_currentBook.id)
-            .listen((updated) {
-              if (mounted && updated != null) {
-                setState(() {
-                  _currentBook = updated;
-                });
-              }
-            });
-      } catch (_) {
-        // Fall back gracefully if uninitialized or offline
-      }
+    if (_currentBook.id.isEmpty) return;
+    final stream = widget.bookService != null
+        ? widget.bookService!.streamBookById(_currentBook.id)
+        : BookRepository().streamBookById(_currentBook.id);
+    try {
+      _bookSubscription = stream.listen((updated) {
+        if (mounted && updated != null) {
+          setState(() {
+            _currentBook = updated;
+          });
+        }
+      });
+    } catch (_) {
+      // Fall back gracefully if uninitialized or offline
     }
   }
 

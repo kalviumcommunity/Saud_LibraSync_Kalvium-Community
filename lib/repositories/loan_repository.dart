@@ -12,12 +12,10 @@ class LoanRepository {
     FirebaseAuth? auth,
   })  : _circulationService =
             circulationService ?? CirculationService(firestore: firestore, auth: auth),
-        _firestore = firestore ?? FirebaseFirestore.instance,
-        _auth = auth ?? FirebaseAuth.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance;
 
   final CirculationService _circulationService;
   final FirebaseFirestore _firestore;
-  final FirebaseAuth _auth;
 
   CollectionReference<Map<String, dynamic>> get _loansCol =>
       _firestore.collection('loans');

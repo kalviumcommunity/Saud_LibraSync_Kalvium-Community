@@ -28,6 +28,7 @@ class _StaffBookManagementViewState extends ConsumerState<StaffBookManagementVie
     'Self-Help',
     'Fantasy',
     'Sci-Fi',
+    'Classic',
   ];
 
   @override

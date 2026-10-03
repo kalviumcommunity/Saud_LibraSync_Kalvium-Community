@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/demo_data.dart';
 import '../../models/book.dart';
 import '../../providers/book_providers.dart';
 import '../../theme/app_colors.dart';
@@ -33,6 +34,7 @@ class _MemberBookCatalogViewState extends ConsumerState<MemberBookCatalogView> {
     'Self-Help',
     'Fiction',
     'Fantasy',
+    'Classic',
     'Nature',
   ];
 
@@ -69,74 +71,9 @@ class _MemberBookCatalogViewState extends ConsumerState<MemberBookCatalogView> {
     // Standard demo books if none loaded yet
     final displayBooks = filtered.isNotEmpty
         ? filtered
-        : [
-            const Book(
-              id: 'm1',
-              title: 'Project Hail Mary',
-              author: 'Andy Weir',
-              description: 'A lone astronaut must save Earth from extinction.',
-              category: 'Sci-Fi',
-              publishedYear: 2021,
-              totalCopies: 4,
-              availableCopies: 3,
-              isAvailable: true,
-            ),
-            const Book(
-              id: 'm2',
-              title: 'Atomic Habits',
-              author: 'James Clear',
-              description: 'Tiny changes, remarkable results.',
-              category: 'Self-Help',
-              publishedYear: 2018,
-              totalCopies: 3,
-              availableCopies: 1,
-              isAvailable: true,
-            ),
-            const Book(
-              id: 'm3',
-              title: 'Dune',
-              author: 'Frank Herbert',
-              description: 'Set on the desert planet Arrakis.',
-              category: 'Sci-Fi',
-              publishedYear: 1965,
-              totalCopies: 5,
-              availableCopies: 4,
-              isAvailable: true,
-            ),
-            const Book(
-              id: 'm4',
-              title: 'Braiding Sweetgrass',
-              author: 'Robin Wall Kimmerer',
-              description: 'Indigenous Wisdom, Scientific Knowledge and the Teachings of Plants.',
-              category: 'Nature',
-              publishedYear: 2013,
-              totalCopies: 2,
-              availableCopies: 2,
-              isAvailable: true,
-            ),
-            const Book(
-              id: 'm5',
-              title: 'The Great Gatsby',
-              author: 'F. Scott Fitzgerald',
-              description: 'A novel of the Jazz Age.',
-              category: 'Fiction',
-              publishedYear: 1925,
-              totalCopies: 4,
-              availableCopies: 4,
-              isAvailable: true,
-            ),
-            const Book(
-              id: 'm6',
-              title: 'The Hobbit',
-              author: 'J.R.R. Tolkien',
-              description: 'Bilbo Baggins journey to Lonely Mountain.',
-              category: 'Fantasy',
-              publishedYear: 1937,
-              totalCopies: 6,
-              availableCopies: 5,
-              isAvailable: true,
-            ),
-          ];
+        : (query.isEmpty && _selectedGenre == 'All Genres' && !_availableOnly
+            ? demoBooks
+            : <Book>[]);
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldBackground,
